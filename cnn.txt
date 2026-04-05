@@ -1,0 +1,183 @@
+# ==========================================================
+# 1. IMPORT LIBRARIES
+# ==========================================================
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Deep Learning
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+
+# Preprocessing
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+
+
+# ==========================================================
+# 2. LOAD DATASET
+# ==========================================================
+# Replace with your dataset path
+
+data = pd.read_csv('your_file.csv')
+
+print("\nFirst 5 rows:\n", data.head())
+print("\nDataset Info:\n")
+print(data.info())
+
+
+# ==========================================================
+# 3. REMOVE DUPLICATES
+# ==========================================================
+data = data.drop_duplicates()
+
+
+# ==========================================================
+# 4. HANDLE MISSING VALUES
+# ==========================================================
+print("\nMissing Values:\n", data.isnull().sum())
+
+# Separate columns
+num_cols = data.select_dtypes(include=np.number).columns
+cat_cols = data.select_dtypes(include='object').columns
+
+# Fill numeric with mean
+data[num_cols] = data[num_cols].fillna(data[num_cols].mean())
+
+# Fill categorical with mode
+for col in cat_cols:
+    data[col].fillna(data[col].mode()[0], inplace=True)
+
+
+# ==========================================================
+# 5. DEFINE TARGET COLUMN (VERY IMPORTANT)
+# ==========================================================
+# CHANGE THIS to your actual output column
+
+target_column = 'target_column'
+
+
+# ==========================================================
+# 6. SEPARATE FEATURES AND TARGET
+# ==========================================================
+X = data.drop(target_column, axis=1)
+y = data[target_column]
+
+
+# ==========================================================
+# 7. ENCODE TARGET VARIABLE
+# ==========================================================
+# Convert labels like "Yes/No" → 0/1
+
+if y.dtype == 'object':
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+
+
+# ==========================================================
+# 8. ENCODE FEATURE VARIABLES
+# ==========================================================
+# Convert categorical input columns
+
+X = pd.get_dummies(X, drop_first=True)
+
+
+# ==========================================================
+# 9. CHECK PROBLEM TYPE
+# ==========================================================
+# Binary vs Multi-class
+
+num_classes = len(np.unique(y))
+
+print("\nNumber of classes:", num_classes)
+
+
+# ==========================================================
+# 10. TRAIN-TEST SPLIT
+# ==========================================================
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+
+# ==========================================================
+# 11. FEATURE SCALING (MANDATORY)
+# ==========================================================
+scaler = StandardScaler()
+
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+
+# ==========================================================
+# 12. BUILD NEURAL NETWORK MODEL
+# ==========================================================
+model = Sequential()
+
+# Input + Hidden layers
+model.add(Dense(64, activation='relu', input_shape=(X_train.shape[1],)))
+model.add(Dense(32, activation='relu'))
+
+# Output layer
+if num_classes == 2:
+    model.add(Dense(1, activation='sigmoid'))
+else:
+    model.add(Dense(num_classes, activation='softmax'))
+
+
+# ==========================================================
+# 13. COMPILE MODEL
+# ==========================================================
+if num_classes == 2:
+    loss_function = 'binary_crossentropy'
+else:
+    loss_function = 'sparse_categorical_crossentropy'
+
+model.compile(
+    optimizer='adam',
+    loss=loss_function,
+    metrics=['accuracy']
+)
+
+
+# ==========================================================
+# 14. TRAIN MODEL
+# ==========================================================
+history = model.fit(
+    X_train, y_train,
+    epochs=20,
+    batch_size=32,
+    validation_split=0.2
+)
+
+
+# ==========================================================
+# 15. EVALUATE MODEL
+# ==========================================================
+loss, accuracy = model.evaluate(X_test, y_test)
+
+print("\nTest Accuracy:", accuracy)
+
+
+# ==========================================================
+# 16. VISUALIZE TRAINING
+# ==========================================================
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title("Model Accuracy")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.legend(['Train', 'Validation'])
+plt.show()
+
+
+# ==========================================================
+# 17. PREDICT NEW DATA
+# ==========================================================
+# Example format (replace values carefully)
+
+# new_data = np.array([[val1, val2, val3, ...]])
+# new_data_scaled = scaler.transform(new_data)
+# prediction = model.predict(new_data_scaled)
+
+# print("Prediction:", prediction)
