@@ -1,0 +1,188 @@
+# ==========================================================
+# 1. IMPORT LIBRARIES
+# ==========================================================
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# ML tools
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    classification_report,
+    mean_squared_error,
+    r2_score
+)
+
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+
+
+# ==========================================================
+# 2. LOAD DATASET
+# ==========================================================
+# Replace with your dataset file
+
+data = pd.read_csv('your_file.csv')
+
+print("\nFirst 5 rows:\n", data.head())
+print("\nDataset Info:\n")
+print(data.info())
+print("\nSummary:\n", data.describe())
+
+
+# ==========================================================
+# 3. REMOVE DUPLICATES
+# ==========================================================
+data = data.drop_duplicates()
+
+
+# ==========================================================
+# 4. HANDLE MISSING VALUES
+# ==========================================================
+print("\nMissing Values:\n", data.isnull().sum())
+
+num_cols = data.select_dtypes(include=np.number).columns
+cat_cols = data.select_dtypes(include='object').columns
+
+# Fill numerical with mean
+data[num_cols] = data[num_cols].fillna(data[num_cols].mean())
+
+# Fill categorical with mode
+for col in cat_cols:
+    data[col].fillna(data[col].mode()[0], inplace=True)
+
+
+# ==========================================================
+# 5. ENCODE CATEGORICAL VARIABLES
+# ==========================================================
+# Convert text → numbers
+
+data = pd.get_dummies(data, drop_first=True)
+
+
+# ==========================================================
+# 6. DEFINE FEATURES AND TARGET
+# ==========================================================
+target_column = 'target_column'
+
+X = data.drop(target_column, axis=1)
+y = data[target_column]
+
+
+# ==========================================================
+# 7. HANDLE TARGET VARIABLE
+# ==========================================================
+# Convert target to numeric if needed
+
+if y.dtype == 'object':
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+
+
+# ==========================================================
+# 8. DETERMINE PROBLEM TYPE
+# ==========================================================
+# Small number of unique values → classification
+# Large continuous values → regression
+
+if y.nunique() <= 10:
+    problem_type = "classification"
+else:
+    problem_type = "regression"
+
+print("\nDetected Problem Type:", problem_type)
+
+
+# ==========================================================
+# 9. TRAIN-TEST SPLIT
+# ==========================================================
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+
+# ==========================================================
+# 10. FEATURE SCALING (VERY IMPORTANT FOR MLP)
+# ==========================================================
+# Neural networks NEED scaling
+
+scaler = StandardScaler()
+
+# IMPORTANT: Fit only on training data
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+
+# ==========================================================
+# 11. CREATE MODEL
+# ==========================================================
+# hidden_layer_sizes → number of neurons in each layer
+# (100,) → 1 hidden layer with 100 neurons
+# (50, 30) → 2 layers with 50 and 30 neurons
+
+if problem_type == "classification":
+    model = MLPClassifier(
+        hidden_layer_sizes=(50, 30),
+        activation='relu',      # most common activation
+        solver='adam',          # optimizer
+        max_iter=500,
+        random_state=42
+    )
+else:
+    model = MLPRegressor(
+        hidden_layer_sizes=(50, 30),
+        activation='relu',
+        solver='adam',
+        max_iter=500,
+        random_state=42
+    )
+
+
+# ==========================================================
+# 12. TRAIN MODEL
+# ==========================================================
+model.fit(X_train, y_train)
+
+
+# ==========================================================
+# 13. MAKE PREDICTIONS
+# ==========================================================
+y_pred = model.predict(X_test)
+
+
+# ==========================================================
+# 14. EVALUATE MODEL
+# ==========================================================
+if problem_type == "classification":
+    print("\nAccuracy:", accuracy_score(y_test, y_pred))
+    print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
+    print("\nClassification Report:\n",
+          classification_report(y_test, y_pred))
+else:
+    print("\nMean Squared Error:", mean_squared_error(y_test, y_pred))
+    print("\nR² Score:", r2_score(y_test, y_pred))
+
+
+# ==========================================================
+# 15. TRAINING LOSS CURVE (VERY USEFUL)
+# ==========================================================
+# Shows how learning progressed
+
+plt.plot(model.loss_curve_)
+plt.title("Training Loss Curve")
+plt.xlabel("Iterations")
+plt.ylabel("Loss")
+plt.show()
+
+
+# ==========================================================
+# 16. PREDICT NEW DATA
+# ==========================================================
+# new_data = np.array([[val1, val2, val3, ...]])
+# new_data_scaled = scaler.transform(new_data)
+# prediction = model.predict(new_data_scaled)
+
+# print("Prediction:", prediction)
