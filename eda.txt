@@ -1,0 +1,91 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Display settings
+pd.set_option('display.max_columns', None)  # Shows all columns of the dataset
+sns.set(style="whitegrid")   # Sets a clean style for plots
+
+
+
+import zipfile  # Used to work with ZIP compressed files
+
+zip_path = "C:\\Users\\yash\\Downloads\\Heart Attack Risk Prediction Dataset (2).zip"
+
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall("/mnt/data/heart_data")
+
+df = pd.read_csv("/mnt/data/heart_data/heart_attack_prediction_dataset.csv")
+# Loads the dataset into a DataFrame
+df.head()  # Displays the first few rows of the dataset
+
+
+df.info()
+
+df.shape  # Returns the number of rows and columns in the dataset
+
+df.columns    # Displays the names of all columns in the dataset
+
+df.describe()   # Shows statistical summary of numerical columns
+
+df.describe(include='object') # Shows summary of categorical (text) columns
+
+df.isnull().sum()   # Checks and counts missing values in each column
+
+sns.heatmap(df.isnull(), cbar=False, cmap='viridis')
+plt.title("Missing Values Heatmap")
+plt.show()
+
+df.duplicated().sum()  # Counts the number of duplicate rows in the dataset
+
+df = df.drop_duplicates()   # Removes duplicate rows from the dataset
+
+target_col = df.columns[-1]   # Selects the last column as the target variable
+df[target_col].value_counts()  # Counts occurrences of each target class
+
+sns.countplot(x=target_col, data=df)  # Plots the count of each class in the target variable
+plt.title("Target Variable Distribution")
+plt.show()
+
+
+num_cols = df.select_dtypes(include=np.number).columns # Selects all categorical feature columns
+cat_cols = df.select_dtypes(exclude=np.number).columns
+
+print("Numerical Columns:", num_cols)    # Displays numerical column names
+print("Categorical Columns:", cat_cols)
+
+
+df[num_cols].hist(figsize=(15,12), bins=20)  # Plots histograms for all numerical features
+plt.suptitle("Histogram of Numerical Features") # Adds a common title to all plots
+plt.show()
+
+
+plt.figure(figsize=(15,8))  # Sets the figure size for the plot
+df[num_cols].boxplot()   # Creates boxplots for numerical features
+plt.xticks(rotation=90)   # Rotates x-axis labels for readability
+plt.title("Boxplot for Outlier Detection")
+plt.show()
+
+
+for col in cat_cols:
+    plt.figure(figsize=(6,4))  
+    sns.countplot(x=col, data=df)   # Plots frequency of each category
+    plt.xticks(rotation=45)    # Rotates labels for better readability
+    plt.title(f"Count Plot of {col}")
+    plt.show()
+
+
+for col in num_cols:
+    plt.figure(figsize=(6,4))
+    sns.boxplot(x=target_col, y=col, data=df) # Plots feature values against target classes
+    plt.title(f"{col} vs {target_col}")  # Adds title showing feature vs target
+    plt.show()
+
+
+corr = df[num_cols].corr()  # Computes correlation between numerical features
+
+plt.figure(figsize=(12,8))
+sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f")   # Plots correlation values as a heatmap
+plt.title("Correlation Heatmap")
+plt.show()
