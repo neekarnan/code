@@ -1,0 +1,216 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+
+
+df = pd.read_csv("/content/Heart Attack Risk Prediction Dataset (1).zip")
+df.head()
+
+
+df.info()
+
+
+df.describe()
+
+
+target = "Heart Attack Risk"
+features = [
+    "Age",
+    "Cholesterol",
+    "Blood Pressure",
+    "Heart Rate",
+    "BMI"
+]
+df = df[features + [target]]
+df.dropna(inplace=True)
+
+
+X = df[features]
+y = df[target]
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+
+X_single = df[["Age"]]
+y_single = df[target]
+X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(
+    X_single, y_single, test_size=0.2, random_state=42
+)
+lr_single = LinearRegression()
+lr_single.fit(X_train_s, y_train_s)
+y_pred_s = lr_single.predict(X_test_s)
+
+
+print("MSE:", mean_squared_error(y_test_s, y_pred_s))
+print("RMSE:", np.sqrt(mean_squared_error(y_test_s, y_pred_s)))
+print("MAE:", mean_absolute_error(y_test_s, y_pred_s))
+print("R2 Score:", r2_score(y_test_s, y_pred_s))
+
+
+plt.scatter(X_test_s, y_test_s, color="blue", label="Actual")
+plt.plot(X_test_s, y_pred_s, color="red", linewidth=2, label="Predicted")
+plt.xlabel("Age")
+plt.ylabel("Heart Attack Risk")
+plt.title("Single Variable Linear Regression")
+plt.legend()
+plt.show()
+
+
+# Convert Blood Pressure from "125/83" → two numeric columns
+df[['Systolic_BP', 'Diastolic_BP']] = df['Blood Pressure'].str.split('/', expand=True)
+# Convert to numeric
+df['Systolic_BP'] = df['Systolic_BP'].astype(float)
+df['Diastolic_BP'] = df['Diastolic_BP'].astype(float)
+# Drop original Blood Pressure column
+df.drop(columns=['Blood Pressure'], inplace=True)
+
+
+features = [
+    "Age",
+    "Cholesterol",
+    "Heart Rate",
+    "BMI",
+    "Systolic_BP",
+    "Diastolic_BP"
+]
+
+
+X = df[features]
+y = df["Heart Attack Risk"]
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+lr_multi = LinearRegression()
+lr_multi.fit(X_train, y_train)
+y_pred_multi = lr_multi.predict(X_test)
+
+
+
+print("MSE:", mean_squared_error(y_test, y_pred_multi))
+print("RMSE:", np.sqrt(mean_squared_error(y_test, y_pred_multi)))
+print("MAE:", mean_absolute_error(y_test, y_pred_multi))
+print("R2 Score:", r2_score(y_test, y_pred_multi))
+
+
+plt.scatter(y_test, y_pred_multi)
+plt.xlabel("Actual Risk")
+plt.ylabel("Predicted Risk")
+plt.title("Multi-Variable Linear Regression")
+plt.show()
+
+
+
+if 'Blood Pressure' in df.columns:
+    df[['Systolic_BP', 'Diastolic_BP']] = df['Blood Pressure'].str.split('/', expand=True)
+    df['Systolic_BP'] = df['Systolic_BP'].astype(float)
+    df['Diastolic_BP'] = df['Diastolic_BP'].astype(float)
+# Drop original column safely
+df.drop(columns=['Blood Pressure'], inplace=True, errors='ignore')
+print("Final columns:", df.columns)
+
+
+
+df.select_dtypes(include='object').columns
+
+
+features = [
+    "Age",
+    "Cholesterol",
+    "Heart Rate",
+    "BMI",
+    "Systolic_BP",
+    "Diastolic_BP"
+]
+X = df[features]
+y = df["Heart Attack Risk"]
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+
+poly = PolynomialFeatures(degree=2, include_bias=False)
+X_poly_train = poly.fit_transform(X_train)
+X_poly_test = poly.transform(X_test)
+
+
+
+poly_model = LinearRegression()
+poly_model.fit(X_poly_train, y_train)
+y_pred_poly = poly_model.predict(X_poly_test)
+
+
+
+mse_poly = mean_squared_error(y_test, y_pred_poly)
+rmse_poly = np.sqrt(mse_poly)
+mae_poly = mean_absolute_error(y_test, y_pred_poly)
+r2_poly = r2_score(y_test, y_pred_poly)
+print("Polynomial Regression Results")
+print("MSE :", mse_poly)
+print("RMSE:", rmse_poly)
+print("MAE :", mae_poly)
+print("R2  :", r2_poly)
+
+
+
+scaler = StandardScaler()
+X_scaled_train = scaler.fit_transform(X_train)
+X_scaled_test = scaler.transform(X_test)
+
+
+
+X_scaled_poly_train = poly.fit_transform(X_scaled_train)
+X_scaled_poly_test = poly.transform(X_scaled_test)
+
+
+
+scaled_poly_model = LinearRegression()
+scaled_poly_model.fit(X_scaled_poly_train, y_train)
+y_pred_scaled_poly = scaled_poly_model.predict(X_scaled_poly_test)
+
+
+
+mse_scaled = mean_squared_error(y_test, y_pred_scaled_poly)
+rmse_scaled = np.sqrt(mse_scaled)
+mae_scaled = mean_absolute_error(y_test, y_pred_scaled_poly)
+r2_scaled = r2_score(y_test, y_pred_scaled_poly)
+
+print("\nScaled Polynomial Regression Results")
+print("MSE :", mse_scaled)
+print("RMSE:", rmse_scaled)
+print("MAE :", mae_scaled)
+print("R2  :", r2_scaled)
+
+
+
+
+models = ["Polynomial", "Scaled Polynomial"]
+r2_scores = [r2_poly, r2_scaled]
+
+plt.plot(models, r2_scores, marker='o')
+plt.ylabel("R² Score (Accuracy)")
+plt.title("Accuracy Curve – Polynomial Models")
+plt.grid(True)
+plt.show()
+
+
+
+mse_scores = [mse_poly, mse_scaled]
+
+plt.plot(models, mse_scores, marker='o')
+plt.ylabel("Mean Squared Error")
+plt.title("Error Curve – Polynomial Models")
+plt.grid(True)
+plt.show()
+
+
+
+
