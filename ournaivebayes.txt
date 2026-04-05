@@ -1,0 +1,121 @@
+import zipfile
+import pandas as pd
+import numpy as np
+
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+zip_path = "E:\\sem4\\pattern recognition and machine lerning\\1.Dataset CVD as per doc.zip"
+
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall("/content/heart_data")
+
+import os
+os.listdir("/content/heart_data")
+
+df = pd.read_csv("E:\\sem4\\pattern recognition and machine lerning\\1.Dataset CVD as per doc.zip")
+df.head()
+
+df.info()
+df.describe()
+
+
+df = pd.get_dummies(df, drop_first=True)
+
+# Target variable:
+# 'Heart_Disease_Yes' indicates whether a person has heart disease
+# 1 → Yes (has heart disease)
+# 0 → No (does not have heart disease)
+y = df["Heart_Disease_Yes"]
+
+# Input features:
+# All remaining columns are used as predictors
+# axis=1 means we are dropping a column (not a row)
+X = df.drop("Heart_Disease_Yes", axis=1)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+nb_model = GaussianNB()
+nb_model.fit(X_train, y_train)
+
+y_pred = nb_model.predict(X_test)
+
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+import zipfile
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from sklearn.naive_bayes import GaussianNB
+from sklearn.preprocessing import StandardScaler
+
+# Select exactly two features for visualization
+features = ["BMI", "Alcohol_Consumption"]
+
+X = df[features].values
+y = df["Heart_Disease_Yes"].values
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+nb_model = GaussianNB()
+nb_model.fit(X_scaled, y)
+
+def plot_naive_bayes_boundary(model, X, y):
+    # Determine the minimum and maximum values of the first feature
+    # This defines the horizontal range of the plot
+    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    
+    # Determine the minimum and maximum values of the second feature
+    # This defines the vertical range of the plot
+    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+
+    # Create a grid of points covering the feature space
+    # These points will be used to predict class labels
+    xx, yy = np.meshgrid(
+        np.linspace(x_min, x_max, 200),
+        np.linspace(y_min, y_max, 200)
+    )
+
+    # Predict the class for each point in the grid
+    # This helps in drawing the decision boundary
+    Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
+    
+    # Reshape predictions to match the grid shape
+    Z = Z.reshape(xx.shape)
+
+    # Create the plot
+    plt.figure()
+    
+    # Plot the decision boundary using contour plot
+    plt.contourf(xx, yy, Z, alpha=0.4)
+    
+    # Plot the actual data points
+    # Points are colored based on their true class labels
+    plt.scatter(X[:, 0], X[:, 1], c=y)
+    
+    # Label the axes (change names based on selected features)
+    plt.xlabel("Feature 1 (scaled)")
+    plt.ylabel("Feature 2 (scaled)")
+    
+    # Add title to the plot
+    plt.title("Naive Bayes Decision Boundary")
+    
+    # Display the plot
+    plt.show()
+
+
+plot_naive_bayes_boundary(nb_model, X_scaled, y)
