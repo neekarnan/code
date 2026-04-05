@@ -17,7 +17,6 @@ from sklearn.metrics import (
 )
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.impute import SimpleImputer
 
 
 # ==========================================================
@@ -25,10 +24,8 @@ from sklearn.impute import SimpleImputer
 # ==========================================================
 data = pd.read_csv('your_file.csv')
 
+print("\nColumns:\n", data.columns)
 print("\nFirst 5 rows:\n", data.head())
-print("\nDataset Info:\n")
-print(data.info())
-print("\nSummary:\n", data.describe())
 
 
 # ==========================================================
@@ -40,93 +37,69 @@ data = data.drop_duplicates()
 # ==========================================================
 # 4. HANDLE MISSING VALUES
 # ==========================================================
-print("\nMissing Values:\n", data.isnull().sum())
-
-# Numerical → fill with mean
 num_cols = data.select_dtypes(include=np.number).columns
+cat_cols = data.select_dtypes(include='object').columns
+
 data[num_cols] = data[num_cols].fillna(data[num_cols].mean())
 
-# Categorical → fill with mode
-cat_cols = data.select_dtypes(include='object').columns
 for col in cat_cols:
     data[col].fillna(data[col].mode()[0], inplace=True)
 
 
 # ==========================================================
-# 5. HANDLE OUTLIERS (OPTIONAL)
+# 5. DEFINE TARGET COLUMN (CHANGE THIS)
 # ==========================================================
-def remove_outliers(df, columns):
-    for col in columns:
-        Q1 = df[col].quantile(0.25)
-        Q3 = df[col].quantile(0.75)
-        IQR = Q3 - Q1
-
-        lower = Q1 - 1.5 * IQR
-        upper = Q3 + 1.5 * IQR
-
-        df = df[(df[col] >= lower) & (df[col] <= upper)]
-    return df
-
-# Uncomment if needed
-# data = remove_outliers(data, num_cols)
-
-
-# ==========================================================
-# 6. ENCODE CATEGORICAL VARIABLES
-# ==========================================================
-# One-hot encoding (preferred)
-data = pd.get_dummies(data, drop_first=True)
-
-# OR Label Encoding (for ordinal categories only)
-# le = LabelEncoder()
-# for col in cat_cols:
-#     data[col] = le.fit_transform(data[col])
-
-
-# ==========================================================
-# 7. DEFINE FEATURES & TARGET
-# ==========================================================
-# Replace with your target column
-
 target_column = 'target_column'
 
+# Safety check
+if target_column not in data.columns:
+    raise ValueError(f"{target_column} not found in dataset")
+
+
+# ==========================================================
+# 6. SEPARATE FEATURES & TARGET
+# ==========================================================
 X = data.drop(target_column, axis=1)
 y = data[target_column]
 
 
 # ==========================================================
-# 8. HANDLE TARGET VARIABLE (VERY IMPORTANT)
+# 7. HANDLE TARGET VARIABLE
 # ==========================================================
-# Logistic regression requires numeric labels (0,1)
-
 if y.dtype == 'object':
+    print("\nTarget values:", y.unique())
+
+    # Convert Yes/No → 0/1
     le = LabelEncoder()
     y = le.fit_transform(y)
 
 
 # ==========================================================
-# 9. FEATURE SCALING
+# 8. ENCODE FEATURES ONLY
 # ==========================================================
-# VERY IMPORTANT for logistic regression
-
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+X = pd.get_dummies(X, drop_first=True)
 
 
 # ==========================================================
-# 10. TRAIN-TEST SPLIT
+# 9. TRAIN-TEST SPLIT
 # ==========================================================
 X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=0.2, random_state=42
+    X, y, test_size=0.2, random_state=42
 )
+
+
+# ==========================================================
+# 10. FEATURE SCALING (CORRECT WAY)
+# ==========================================================
+scaler = StandardScaler()
+
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
 
 # ==========================================================
 # 11. TRAIN MODEL
 # ==========================================================
-# solver='liblinear' works well for small datasets
-# max_iter increased to avoid convergence warnings
-
 model = LogisticRegression(max_iter=1000, solver='liblinear')
 model.fit(X_train, y_train)
 
@@ -136,42 +109,36 @@ model.fit(X_train, y_train)
 # ==========================================================
 y_pred = model.predict(X_test)
 
-# Probabilities (used for ROC curve)
-y_prob = model.predict_proba(X_test)[:, 1]
-
 
 # ==========================================================
 # 13. EVALUATION
 # ==========================================================
 print("\nAccuracy:", accuracy_score(y_test, y_pred))
-
 print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
-
 print("\nClassification Report:\n",
       classification_report(y_test, y_pred))
 
 
 # ==========================================================
-# 14. ROC-AUC SCORE (IMPORTANT)
+# 14. ROC-AUC (ONLY FOR BINARY)
 # ==========================================================
-roc_score = roc_auc_score(y_test, y_prob)
-print("\nROC-AUC Score:", roc_score)
+if len(np.unique(y)) == 2:
+    y_prob = model.predict_proba(X_test)[:, 1]
+
+    roc_score = roc_auc_score(y_test, y_prob)
+    print("\nROC-AUC Score:", roc_score)
+
+    fpr, tpr, _ = roc_curve(y_test, y_prob)
+
+    plt.plot(fpr, tpr)
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC Curve")
+    plt.show()
 
 
 # ==========================================================
-# 15. ROC CURVE PLOT
-# ==========================================================
-fpr, tpr, thresholds = roc_curve(y_test, y_prob)
-
-plt.plot(fpr, tpr)
-plt.xlabel("False Positive Rate")
-plt.ylabel("True Positive Rate")
-plt.title("ROC Curve")
-plt.show()
-
-
-# ==========================================================
-# 16. FEATURE IMPORTANCE (COEFFICIENTS)
+# 15. FEATURE IMPORTANCE
 # ==========================================================
 coefficients = pd.DataFrame({
     'Feature': X.columns,
@@ -182,12 +149,10 @@ print("\nFeature Importance:\n", coefficients)
 
 
 # ==========================================================
-# 17. PREDICT NEW DATA
+# 16. PREDICT NEW DATA
 # ==========================================================
-# new_data = np.array([[val1, val2, val3, ...]])
+# new_data = np.array([[val1, val2, ...]])
 # new_data_scaled = scaler.transform(new_data)
 # prediction = model.predict(new_data_scaled)
-# probability = model.predict_proba(new_data_scaled)
 
 # print("Prediction:", prediction)
-# print("Probability:", probability)
