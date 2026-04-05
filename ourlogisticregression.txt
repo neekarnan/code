@@ -1,0 +1,131 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    classification_report,
+    roc_curve,
+    roc_auc_score
+)
+
+import warnings
+warnings.filterwarnings("ignore")
+
+
+df = pd.read_csv("D:\\SEM4\\ML\\CVD_cleaned.csv")
+
+#Displays the first few rows of the dataset
+df.head()
+
+#Provides dataset structure, data types, and non-null counts
+df.info()
+
+#Shows statistical summary of numerical features
+df.describe()
+
+#Checks the number of missing values in each column
+df.isnull().sum()
+
+
+#Converts the target variable into binary form and visualizes the class distribution of heart disease
+df['Heart_Disease'] = df['Heart_Disease'].map({'No': 0, 'Yes': 1})
+
+
+plt.figure(figsize=(6,4))
+sns.countplot(data=df, x='Heart_Disease')
+plt.title("Heart Disease Target Distribution (0 = No, 1 = Yes)")
+plt.xlabel("Heart Disease")
+plt.ylabel("Count")
+plt.show()
+
+
+#Separates the dataset into input features (X) and target variable (y)
+X = df.drop(columns=['Heart_Disease'])
+y = df['Heart_Disease']
+
+
+#Converts categorical features into numerical form using one-hot encoding
+X = pd.get_dummies(X, drop_first=True)
+
+
+#Splits the dataset into training and testing sets while preserving class proportions
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+
+
+#Initializes a StandardScaler to normalize feature values.
+scaler = StandardScaler()
+
+
+#Applies feature scaling to training data and uses the same scale for test data.
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+
+#Trains a Logistic Regression model using the scaled training dataset
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train_scaled, y_train)
+
+
+#Generates predicted class labels and predicted probabilities for the test dataset
+y_pred = model.predict(X_test_scaled)
+y_pred_prob = model.predict_proba(X_test_scaled)[:, 1]
+
+
+#Calculates and displays the accuracy of the model on test data
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", round(accuracy, 4))
+
+
+#Computes the confusion matrix and visualizes it as a heatmap
+cm = confusion_matrix(y_test, y_pred)
+
+plt.figure(figsize=(5,4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix")
+plt.show()
+
+
+#Displays precision, recall, F1-score, and support for each class
+print(classification_report(y_test, y_pred))
+
+
+#Plots the ROC curve and computes the AUC score to evaluate model performance
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
+auc = roc_auc_score(y_test, y_pred_prob)
+
+plt.figure(figsize=(6,5))
+plt.plot(fpr, tpr, label=f"AUC = {auc:.2f}")
+plt.plot([0,1], [0,1], linestyle='--')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve")
+plt.legend()
+plt.show()
+
+
+#Extracts and displays the most important features based on logistic regression coefficients
+feature_importance = pd.DataFrame({
+    "Feature": X.columns,
+    "Coefficient": model.coef_[0]
+})
+
+feature_importance.sort_values(by="Coefficient", ascending=False).head(10)
+
+
+#Prints a confirmation message describing the trained model and its purpose
+print("Logistic Regression model trained successfully.")
+print("The model predicts the presence of heart disease using lifestyle and health indicators.")
