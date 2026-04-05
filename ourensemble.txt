@@ -1,0 +1,86 @@
+import zipfile
+import pandas as pd
+import numpy as np
+
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+
+zip_path = r"C:\Users\Yashwanth\Downloads\1.Dataset CVD as per doc.zip"
+
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall("/content/cvd_data")
+
+import os
+os.listdir("/content/cvd_data")
+
+
+df = pd.read_csv(r"C:\Users\Yashwanth\Downloads\1.Dataset CVD as per doc\CVD_cleaned.csv")
+df.head()
+
+df.info()
+
+
+for col in df.columns:
+    if df[col].dtype == 'object':
+        df[col] = LabelEncoder().fit_transform(df[col])
+
+X = df.iloc[:, :-1]
+y = df.iloc[:, -1]
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+
+rf_model = RandomForestClassifier(
+    n_estimators=100,
+    random_state=42
+)
+
+rf_model.fit(X_train, y_train)
+
+y_pred_rf = rf_model.predict(X_test)
+
+print("Random Forest Accuracy:", accuracy_score(y_test, y_pred_rf))
+print("\nClassification Report:\n", classification_report(y_test, y_pred_rf))
+print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred_rf))
+
+
+gb_model = GradientBoostingClassifier(
+    n_estimators=100,
+    learning_rate=0.1,
+    random_state=42
+)
+
+gb_model.fit(X_train, y_train)
+
+y_pred_gb = gb_model.predict(X_test)
+
+print("\nGradient Boosting Accuracy:", accuracy_score(y_test, y_pred_gb))
+print("\nClassification Report:\n", classification_report(y_test, y_pred_gb))
+print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred_gb))
+
+
+models = ["Random Forest", "Gradient Boosting"]
+accuracies = [
+    accuracy_score(y_test, y_pred_rf),
+    accuracy_score(y_test, y_pred_gb)
+]
+
+plt.figure()
+plt.bar(models, accuracies)
+plt.xlabel("Models")
+plt.ylabel("Accuracy")
+plt.title("Ensemble Learning Model Comparison")
+plt.show()
