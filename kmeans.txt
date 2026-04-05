@@ -1,0 +1,145 @@
+# ==========================================================
+# 1. IMPORT LIBRARIES
+# ==========================================================
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# KMeans model
+from sklearn.cluster import KMeans
+
+# Preprocessing
+from sklearn.preprocessing import StandardScaler
+
+
+# ==========================================================
+# 2. LOAD DATASET
+# ==========================================================
+# Replace with your dataset file
+
+data = pd.read_csv('your_file.csv')
+
+print("\nFirst 5 rows:\n", data.head())
+print("\nDataset Info:\n")
+print(data.info())
+print("\nSummary:\n", data.describe())
+
+
+# ==========================================================
+# 3. REMOVE DUPLICATES
+# ==========================================================
+data = data.drop_duplicates()
+
+
+# ==========================================================
+# 4. HANDLE MISSING VALUES
+# ==========================================================
+print("\nMissing Values:\n", data.isnull().sum())
+
+# Only numerical data is used in KMeans
+# So we focus on numeric columns
+
+num_cols = data.select_dtypes(include=np.number).columns
+
+# Fill missing numerical values with mean
+data[num_cols] = data[num_cols].fillna(data[num_cols].mean())
+
+
+# ==========================================================
+# 5. REMOVE NON-NUMERIC COLUMNS
+# ==========================================================
+# KMeans works ONLY with numbers
+
+data_numeric = data[num_cols]
+
+
+# ==========================================================
+# 6. FEATURE SCALING (VERY IMPORTANT)
+# ==========================================================
+# KMeans is distance-based → scaling is mandatory
+
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data_numeric)
+
+
+# ==========================================================
+# 7. FIND OPTIMAL NUMBER OF CLUSTERS (ELBOW METHOD)
+# ==========================================================
+# We test different values of K
+
+inertia = []  # measures cluster compactness
+
+K_range = range(1, 11)
+
+for k in K_range:
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(data_scaled)
+    inertia.append(kmeans.inertia_)
+
+# Plot elbow graph
+plt.plot(K_range, inertia, marker='o')
+plt.xlabel("Number of Clusters (K)")
+plt.ylabel("Inertia")
+plt.title("Elbow Method")
+plt.show()
+
+
+# ==========================================================
+# 8. CHOOSE K VALUE
+# ==========================================================
+# Look at elbow plot and manually choose K
+
+k = 3  # CHANGE THIS BASED ON ELBOW GRAPH
+
+
+# ==========================================================
+# 9. APPLY K-MEANS
+# ==========================================================
+kmeans = KMeans(n_clusters=k, random_state=42)
+
+clusters = kmeans.fit_predict(data_scaled)
+
+
+# ==========================================================
+# 10. ADD CLUSTER LABELS TO DATA
+# ==========================================================
+data['Cluster'] = clusters
+
+print("\nClustered Data:\n", data.head())
+
+
+# ==========================================================
+# 11. ANALYZE CLUSTERS
+# ==========================================================
+# See average values per cluster
+
+cluster_summary = data.groupby('Cluster').mean()
+print("\nCluster Summary:\n", cluster_summary)
+
+
+# ==========================================================
+# 12. VISUALIZATION (IF 2 FEATURES)
+# ==========================================================
+# Only works if you have 2 columns
+
+if data_numeric.shape[1] == 2:
+    plt.scatter(data_scaled[:, 0], data_scaled[:, 1], c=clusters)
+
+    # Plot centroids
+    centroids = kmeans.cluster_centers_
+    plt.scatter(centroids[:, 0], centroids[:, 1],
+                color='red', marker='X', s=200)
+
+    plt.title("K-Means Clusters")
+    plt.show()
+
+
+# ==========================================================
+# 13. PREDICT NEW DATA CLUSTER
+# ==========================================================
+# new_data = np.array([[val1, val2, ...]])
+# new_data_scaled = scaler.transform(new_data)
+# cluster = kmeans.predict(new_data_scaled)
+
+# print("Assigned Cluster:", cluster)
