@@ -1,0 +1,142 @@
+import zipfile
+import os
+import pandas as pd
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.linear_model import Perceptron
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import accuracy_score
+
+zip_path = r"C:\Users\Yashwanth\Downloads\1.Dataset CVD as per doc.zip"
+extract_path = "/content/cvd_data"
+
+
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall(extract_path)
+
+print("ZIP file extracted successfully!")
+
+os.listdir(extract_path)
+
+for file in os.listdir(extract_path):
+    if file.endswith(".csv"):
+        csv_path = os.path.join(extract_path, file)
+        df = pd.read_csv(csv_path)
+        break
+
+df.head()
+
+df.info()
+
+
+for col in df.columns:
+    if df[col].dtype == 'object':
+        df[col] = LabelEncoder().fit_transform(df[col])
+
+X = df.iloc[:, :-1].values   # features
+y = df.iloc[:, -1].values   # target
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=42
+)
+
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+
+slp = Perceptron(max_iter=1000, eta0=0.01, random_state=42)
+slp.fit(X_train, y_train)
+
+y_pred_slp = slp.predict(X_test)
+slp_accuracy = accuracy_score(y_test, y_pred_slp)
+
+print("Single Layer Perceptron Accuracy:", slp_accuracy)
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
+
+for file in os.listdir(extract_path):
+    if file.endswith(".csv"):
+        csv_path = os.path.join(extract_path, file)
+        df = pd.read_csv(csv_path)
+        break
+
+df.head()
+
+for col in df.columns:
+    if df[col].dtype == 'object':
+        df[col] = LabelEncoder().fit_transform(df[col])
+
+X = df.iloc[:, :-1].values
+y = df.iloc[:, -1].values
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=42
+)
+
+
+
+y_scaler = StandardScaler()
+
+y_train = y_scaler.fit_transform(y_train.reshape(-1, 1))
+y_test  = y_scaler.transform(y_test.reshape(-1, 1))
+
+from tensorflow.keras.layers import Input
+model = Sequential([
+    Input(shape=(X_train.shape[1],)),   
+
+    Dense(32, activation='relu'),       
+    Dense(16, activation='relu'),       
+
+    Dense(1)    
+])
+
+model.compile(
+    optimizer=Adam(learning_rate=0.001),
+    loss='mse',
+    metrics=['mae']
+)
+
+from tensorflow.keras.callbacks import EarlyStopping
+
+early_stop = EarlyStopping(
+    monitor='val_loss',
+    patience=5,
+    restore_best_weights=True
+)
+
+history = model.fit(
+    X_train, y_train,
+    validation_split=0.2,
+    epochs=100,
+    batch_size=32,
+    callbacks=[early_stop]
+)
+
+plt.figure()
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.title("MLP Loss Curve")
+plt.legend()
+plt.show()
+
+
+loss, accuracy = model.evaluate(X_test, y_test)
+print("MLP Test Accuracy:", accuracy)
