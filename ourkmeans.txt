@@ -1,0 +1,62 @@
+import zipfile
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+
+
+zip_path = r"C:\Users\Yashwanth\Downloads\1.Dataset CVD as per doc.zip"
+
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall("/content/cvd_data")
+
+import os
+os.listdir("/content/cvd_data")
+
+
+df = pd.read_csv(r"C:\Users\Yashwanth\Downloads\1.Dataset CVD as per doc\CVD_cleaned.csv")
+df.head()
+
+df.info()
+
+
+for col in df.columns:
+    if df[col].dtype == 'object':
+        df[col] = LabelEncoder().fit_transform(df[col])
+
+
+X = df.iloc[:, :-1]
+
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+
+wcss = []
+
+for i in range(1, 11):
+    kmeans = KMeans(n_clusters=i, random_state=42)
+    kmeans.fit(X_scaled)
+    wcss.append(kmeans.inertia_)
+
+
+plt.figure()
+plt.plot(range(1, 11), wcss, marker='o')
+plt.xlabel("Number of Clusters")
+plt.ylabel("WCSS")
+plt.title("Elbow Method")
+plt.show()
+
+
+kmeans = KMeans(n_clusters=3, random_state=42)
+y_kmeans = kmeans.fit_predict(X_scaled)
+
+
+plt.figure()
+plt.scatter(X_scaled[:, 0], X_scaled[:, 1], c=y_kmeans)
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.title("K-Means Clustering")
+plt.show()
