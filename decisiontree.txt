@@ -1,0 +1,189 @@
+# ==========================================================
+# 1. IMPORT LIBRARIES
+# ==========================================================
+# These are pre-built tools so you don’t have to reinvent statistics
+
+import pandas as pd              # For handling tables (datasets)
+import numpy as np               # For math operations
+import matplotlib.pyplot as plt  # For graphs
+import seaborn as sns            # For better graphs
+
+# ML tools from sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    classification_report,
+    mean_squared_error,
+    r2_score
+)
+
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+
+
+# ==========================================================
+# 2. LOAD DATASET
+# ==========================================================
+# Replace 'your_file.csv' with your dataset file
+
+data = pd.read_csv('your_file.csv')
+
+# Look at first few rows
+print("\nFirst 5 rows:\n", data.head())
+
+# Understand structure
+print("\nDataset Info:\n")
+print(data.info())
+
+# Basic statistics
+print("\nSummary:\n", data.describe())
+
+
+# ==========================================================
+# 3. REMOVE DUPLICATES
+# ==========================================================
+# Sometimes same row appears multiple times → remove it
+data = data.drop_duplicates()
+
+
+# ==========================================================
+# 4. HANDLE MISSING VALUES
+# ==========================================================
+print("\nMissing Values:\n", data.isnull().sum())
+
+# Separate numerical and categorical columns
+num_cols = data.select_dtypes(include=np.number).columns
+cat_cols = data.select_dtypes(include='object').columns
+
+# Fill numerical missing values with mean
+data[num_cols] = data[num_cols].fillna(data[num_cols].mean())
+
+# Fill categorical missing values with most frequent value
+for col in cat_cols:
+    data[col].fillna(data[col].mode()[0], inplace=True)
+
+
+# ==========================================================
+# 5. ENCODE CATEGORICAL VARIABLES
+# ==========================================================
+# Convert text into numbers
+
+# One-hot encoding (best general option)
+data = pd.get_dummies(data, drop_first=True)
+
+
+# ==========================================================
+# 6. DEFINE TARGET VARIABLE
+# ==========================================================
+# Replace this with your column you want to predict
+
+target_column = 'target_column'
+
+# Features (inputs)
+X = data.drop(target_column, axis=1)
+
+# Target (output)
+y = data[target_column]
+
+
+# ==========================================================
+# 7. DETERMINE PROBLEM TYPE
+# ==========================================================
+# If target is continuous → Regression
+# If target is categories → Classification
+
+if y.nunique() <= 10:
+    problem_type = "classification"
+else:
+    problem_type = "regression"
+
+print("\nDetected Problem Type:", problem_type)
+
+
+# ==========================================================
+# 8. TRAIN-TEST SPLIT
+# ==========================================================
+# Splitting data into training and testing
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+
+# ==========================================================
+# 9. CREATE MODEL
+# ==========================================================
+# Decision Tree doesn't need scaling (finally something easy)
+
+if problem_type == "classification":
+    model = DecisionTreeClassifier(
+        max_depth=5,        # limits tree size (prevents overfitting)
+        random_state=42
+    )
+else:
+    model = DecisionTreeRegressor(
+        max_depth=5,
+        random_state=42
+    )
+
+
+# ==========================================================
+# 10. TRAIN MODEL
+# ==========================================================
+model.fit(X_train, y_train)
+
+
+# ==========================================================
+# 11. MAKE PREDICTIONS
+# ==========================================================
+y_pred = model.predict(X_test)
+
+
+# ==========================================================
+# 12. EVALUATE MODEL
+# ==========================================================
+if problem_type == "classification":
+    print("\nAccuracy:", accuracy_score(y_test, y_pred))
+    print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
+    print("\nClassification Report:\n",
+          classification_report(y_test, y_pred))
+
+else:
+    print("\nMean Squared Error:", mean_squared_error(y_test, y_pred))
+    print("\nR² Score:", r2_score(y_test, y_pred))
+
+
+# ==========================================================
+# 13. FEATURE IMPORTANCE
+# ==========================================================
+# Shows which features matter most
+
+importance = pd.DataFrame({
+    'Feature': X.columns,
+    'Importance': model.feature_importances_
+}).sort_values(by='Importance', ascending=False)
+
+print("\nFeature Importance:\n", importance)
+
+
+# ==========================================================
+# 14. VISUALIZE TREE (OPTIONAL BUT COOL)
+# ==========================================================
+from sklearn.tree import plot_tree
+
+plt.figure(figsize=(15, 10))
+plot_tree(model, filled=True, feature_names=X.columns)
+plt.title("Decision Tree Visualization")
+plt.show()
+
+
+# ==========================================================
+# 15. PREDICT NEW DATA
+# ==========================================================
+# Example input (replace with real values)
+
+# new_data = np.array([[val1, val2, val3, ...]])
+# prediction = model.predict(new_data)
+
+# print("Prediction:", prediction)
