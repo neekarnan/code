@@ -1,0 +1,156 @@
+import zipfile
+import pandas as pd
+import numpy as np
+
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score, classification_report
+import matplotlib.pyplot as plt
+
+
+zip_path = r"C:\Users\yashwanth\Downloads\1.Dataset CVD as per doc.zip"
+
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall("/content/cvd_data")
+
+
+import os
+os.listdir("/content/cvd_data")
+
+
+df = pd.read_csv(r"C:\Users\yashwanth\Downloads\1.Dataset CVD as per doc\CVD_cleaned.csv")
+df.head()
+
+
+df.info()
+
+label_encoder = LabelEncoder()
+
+for col in df.columns:
+    if df[col].dtype == 'object':
+        df[col] = label_encoder.fit_transform(df[col])
+
+df.columns
+
+df.columns = df.columns.str.strip().str.lower()
+
+import pandas as pd
+
+# load dataset
+df = pd.read_csv(r"C:\Users\yashwanth\Downloads\1.Dataset CVD as per doc\CVD_cleaned.csv")
+
+# clean column names completely
+df.columns = (
+    df.columns
+    .str.strip()
+    .str.lower()
+    .str.replace(" ", "_")
+)
+
+print("Columns found in dataset:")
+print(df.columns.tolist())
+
+# automatically find target column
+possible_targets = ['cardio', 'target', 'cvd', 'heart_disease', 'tenyearchd']
+
+target_col = None
+for col in df.columns:
+    if col in possible_targets:
+        target_col = col
+        break
+
+if target_col is None:
+    raise ValueError("❌ Target column not found. Check dataset columns above.")
+
+print(f"✅ Target column detected: {target_col}")
+
+# split features and target
+X = df.drop(target_col, axis=1)
+y = df[target_col]
+
+print("X shape:", X.shape)
+print("y shape:", y.shape)
+
+
+from sklearn.preprocessing import LabelEncoder
+
+le = LabelEncoder()
+
+for col in X.columns:
+    X[col] = le.fit_transform(X[col])
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+id3_model = DecisionTreeClassifier(
+    criterion="entropy",
+    max_depth=10,
+    random_state=42
+)
+
+id3_model.fit(X_train, y_train)
+
+from sklearn.metrics import accuracy_score
+
+y_pred = id3_model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+
+print("Decision Tree (ID3) Accuracy:", accuracy)
+
+import matplotlib.pyplot as plt
+from sklearn.tree import plot_tree
+
+plt.figure(figsize=(20, 10))
+
+plot_tree(
+    id3_model,                 # trained DecisionTreeClassifier
+    feature_names=X.columns,   # feature names
+    class_names=["No", "Yes"], # classes for heart_disease
+    filled=True
+)
+
+plt.title("Decision Tree using ID3 (Entropy)")
+plt.show()
+
+
+cart_model = DecisionTreeClassifier(
+    criterion='gini',
+    random_state=42
+)
+
+cart_model.fit(X_train, y_train)
+
+y_pred_cart = cart_model.predict(X_test)
+
+print("CART Accuracy:", accuracy_score(y_test, y_pred_cart))
+print(classification_report(y_test, y_pred_cart))
+
+from sklearn.tree import DecisionTreeClassifier
+
+cart_model = DecisionTreeClassifier(
+    criterion="gini",   # CART
+    max_depth=10,        # 🔑 prevents crash
+    random_state=42
+)
+
+cart_model.fit(X_train, y_train)
+
+
+import matplotlib.pyplot as plt
+from sklearn.tree import plot_tree
+
+plt.figure(figsize=(20, 10))
+
+plot_tree(
+    cart_model,
+    feature_names=X.columns,
+    class_names=["No", "Yes"],
+    filled=True
+)
+
+plt.title("Decision Tree using CART (Gini Index)")
+plt.show()
