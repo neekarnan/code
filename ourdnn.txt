@@ -1,0 +1,70 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
+
+
+df = pd.read_csv("C:\\Users\\Yashwanth\\Downloads\\1.Dataset CVD as per doc\\CVD_cleaned.csv")
+
+df.head()
+df.info()
+
+
+for col in df.columns:
+    if df[col].dtype == 'object':
+        df[col] = LabelEncoder().fit_transform(df[col])
+
+
+X = df.iloc[:, :-1].values
+y = df.iloc[:, -1].values
+
+
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+
+model = Sequential()
+
+model.add(Dense(64, activation='relu', input_dim=X_train.shape[1]))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
+
+
+model.compile(
+    optimizer=Adam(learning_rate=0.001),
+    loss='binary_crossentropy',
+    metrics=['accuracy']
+)
+
+
+history = model.fit(
+    X_train, y_train,
+    validation_split=0.2,
+    epochs=50,
+    batch_size=32
+)
+
+
+plt.figure()
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.title("CNN Loss Curve")
+plt.legend()
+plt.show()
+
+
+loss, accuracy = model.evaluate(X_test, y_test)
+print("Test Accuracy:", accuracy)
