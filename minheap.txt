@@ -1,0 +1,138 @@
+import java.util.*;
+
+class MinHeap {
+    private int[] heap;
+    private int size;
+    private int capacity;
+
+    MinHeap(int capacity) {
+        this.capacity = capacity;
+        heap = new int[capacity];
+        size = 0;
+    }
+
+    // ================= INSERT =================
+    public void insert(int value) {
+        if (size == capacity) {
+            System.out.println("Heap is full");
+            return;
+        }
+
+        heap[size] = value;
+        heapifyUp(size);
+        size++;
+    }
+
+    private void heapifyUp(int index) {
+        int parent = (index - 1) / 2;
+
+        while (index > 0 && heap[parent] > heap[index]) {
+            swap(parent, index);
+            index = parent;
+            parent = (index - 1) / 2;
+        }
+    }
+
+    // ================= DELETE MIN =================
+    public int deleteMin() {
+        if (size == 0) {
+            System.out.println("Heap is empty");
+            return -1;
+        }
+
+        int min = heap[0];
+        heap[0] = heap[size - 1];
+        size--;
+
+        heapifyDown(0);
+        return min;
+    }
+
+    private void heapifyDown(int index) {
+        int smallest = index;
+        int left = 2 * index + 1;
+        int right = 2 * index + 2;
+
+        if (left < size && heap[left] < heap[smallest])
+            smallest = left;
+
+        if (right < size && heap[right] < heap[smallest])
+            smallest = right;
+
+        if (smallest != index) {
+            swap(index, smallest);
+            heapifyDown(smallest);
+        }
+    }
+
+    // ================= BUILD HEAP =================
+    public void buildHeap(int[] arr) {
+        if (arr.length > capacity) {
+            System.out.println("Array exceeds capacity");
+            return;
+        }
+
+        size = arr.length;
+        for (int i = 0; i < size; i++) {
+            heap[i] = arr[i];
+        }
+
+        for (int i = (size / 2) - 1; i >= 0; i--) {
+            heapifyDown(i);
+        }
+    }
+
+    // ================= DISPLAY =================
+    public void display() {
+        if (size == 0) {
+            System.out.println("Heap is empty");
+            return;
+        }
+
+        for (int i = 0; i < size; i++) {
+            System.out.print(heap[i] + " ");
+        }
+        System.out.println();
+    }
+
+    // ================= SWAP =================
+    private void swap(int i, int j) {
+        int temp = heap[i];
+        heap[i] = heap[j];
+        heap[j] = temp;
+    }
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.print("Enter number of elements: ");
+        int n = sc.nextInt();
+
+        int[] arr = new int[n];
+        System.out.println("Enter elements:");
+        for (int i = 0; i < n; i++) {
+            arr[i] = sc.nextInt();
+        }
+
+        MinHeap heap = new MinHeap(100);
+
+        // Build heap
+        heap.buildHeap(arr);
+        System.out.print("Initial Min-Heap: ");
+        heap.display();
+
+        // Insert
+        System.out.print("Enter element to insert: ");
+        int val = sc.nextInt();
+        heap.insert(val);
+        System.out.print("After insertion: ");
+        heap.display();
+
+        // Delete min
+        int deleted = heap.deleteMin();
+        System.out.println("Deleted min element: " + deleted);
+        System.out.print("After deletion: ");
+        heap.display();
+
+        sc.close();
+    }
+}
