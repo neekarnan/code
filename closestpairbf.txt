@@ -1,0 +1,36 @@
+import java.util.*; 
+public class ClosestPair 
+{ 
+    static double MinDistance(int x1,int x2,int y1,int y2) 
+    { 
+        return Math.sqrt(Math.pow(x1-x2,2)+Math.pow(y1-y2,2)); 
+ 
+    } 
+ 
+    public static void main(String[] args) 
+    { 
+        double mindistance=Double.MAX_VALUE;         
+        int points[][]={{2,2},{3,4},{5,10},{4,4}};         
+        int x1=0;int x2=0;int y1=0;int y2=0; 
+ 
+        for(int i=0;i<points.length;i++) 
+        { 
+            for(int j=i+1;j<points.length;j++) 
+            { 
+                double d=MinDistance(points[i][0],points[j][0],points[i][1],points[j][1]);                 
+                if(d<mindistance) 
+                { 
+                     mindistance=d;                      
+                     x1=points[i][0];                      
+                     x2=points[i][1];                      
+                     y1=points[j][0];                      
+                     y2=points[j][0];                
+                } 
+            } 
+        } 
+        System.out.println("Closest pair:"); 
+        System.out.println("["+x1+","+y1+"]"+","+"["+x2+","+y2+"]"); 
+        System.out.println("The minimum distance is "+mindistance); 
+ 
+    } 
+} 
