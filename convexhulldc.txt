@@ -1,0 +1,77 @@
+import java.util.*;
+
+class Point {
+    int x, y;
+    Point(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+}
+
+public class QuickHull {
+
+    static int side(Point a, Point b, Point p) {
+        int v = (p.y - a.y) * (b.x - a.x) - (b.y - a.y) * (p.x - a.x);
+        if (v > 0) return 1;
+        if (v < 0) return -1;
+        return 0;
+    }
+
+    static int dist(Point a, Point b, Point p) {
+        return Math.abs((p.y - a.y) * (b.x - a.x) - (b.y - a.y) * (p.x - a.x));
+    }
+
+    static void quickHull(Point[] p, int n, Point a, Point b, int s, Set<Point> hull) {
+        int idx = -1;
+        int max = 0;
+
+        for (int i = 0; i < n; i++) {
+            int d = dist(a, b, p[i]);
+            if (side(a, b, p[i]) == s && d > max) {
+                idx = i;
+                max = d;
+            }
+        }
+
+        if (idx == -1) {
+            hull.add(a);
+            hull.add(b);
+            return;
+        }
+
+        quickHull(p, n, p[idx], a, -side(p[idx], a, b), hull);
+        quickHull(p, n, p[idx], b, -side(p[idx], b, a), hull);
+    }
+
+    static Set<Point> convexHull(Point[] p, int n) {
+        Set<Point> hull = new HashSet<>();
+
+        int min = 0, max = 0;
+        for (int i = 1; i < n; i++) {
+            if (p[i].x < p[min].x) min = i;
+            if (p[i].x > p[max].x) max = i;
+        }
+
+        quickHull(p, n, p[min], p[max], 1, hull);
+        quickHull(p, n, p[min], p[max], -1, hull);
+
+        return hull;
+    }
+
+    public static void main(String[] args) {
+        Point[] p = {
+                new Point(0, 3),
+                new Point(2, 2),
+                new Point(1, 1),
+                new Point(2, 1),
+                new Point(3, 0),
+                new Point(0, 0),
+                new Point(3, 3)
+        };
+
+        Set<Point> hull = convexHull(p, p.length);
+
+        for (Point pt : hull)
+            System.out.println(pt.x + " " + pt.y);
+    }
+}
