@@ -1,0 +1,165 @@
+import java.util.*;
+
+class Point
+{
+    int x;
+    int y;
+
+    Point(int x,int y)
+    {
+        this.x=x;
+        this.y=y;
+    }
+}
+
+public class ClosestPairDad
+{
+    static Point p1_final = null;
+    static Point p2_final = null;
+
+    static double distance(Point a,Point b)
+    {
+        int dx=a.x-b.x;
+        int dy=a.y-b.y;
+        return Math.sqrt(dx*dx+dy*dy);
+    }
+
+    static void sortByX(Point[] p)
+    {
+        for (int i = 0; i < p.length - 1; i++)
+        {
+            for (int j = i + 1; j < p.length; j++)
+            {
+                if (p[i].x > p[j].x)
+                {
+                    Point temp = p[i];
+                    p[i] = p[j];
+                    p[j] = temp;
+                }
+            }
+        }
+    }
+
+    static void sortByY(Point[] p,int n)
+    {
+        for (int i = 0; i < n - 1; i++)
+        {
+            for (int j = i + 1; j < n; j++)
+            {
+                if (p[i].y > p[j].y)
+                {
+                    Point temp = p[i];
+                    p[i] = p[j];
+                    p[j] = temp;
+                }
+            }
+        }
+    }
+
+    static double bruteForce(Point[] p,int n)
+    {
+        double min=Double.MAX_VALUE;
+
+        for(int i=0;i<n;i++)
+        {
+            for(int j=i+1;j<n;j++)
+            {
+                double d=distance(p[i],p[j]);
+                if(d<min)
+                {
+                    min=d;
+                    p1_final = p[i];
+                    p2_final = p[j];
+                }
+            }
+        }
+        return min;
+    }
+
+    static double stripClosest(Point[] strip,int size,double min)
+    {
+        sortByY(strip,size);
+
+        for(int i=0;i<size;i++)
+        {
+            for(int j=i+1;j<size;j++)
+            {
+                if(strip[j].y-strip[i].y>=min)
+                {
+                    break;
+                }
+
+                double d=distance(strip[i],strip[j]);
+
+                if(d<min)
+                {
+                    min=d;
+                    p1_final = strip[i];
+                    p2_final = strip[j];
+                }
+            }
+        }
+        return min;
+    }
+
+    static double closestUtil(Point[] p,int n)
+    {
+        if(n<=3)
+        {
+            return bruteForce(p,n);
+        }
+
+        int mid=n/2;
+        Point midpoint=p[mid];
+
+        Point[] left=new Point[mid];
+        for(int i=0;i<mid;i++)
+        {
+            left[i]=p[i];
+        }
+
+        Point[] right=new Point[n-mid];
+        for(int i=mid;i<n;i++)
+        {
+            right[i-mid]=p[i];
+        }
+
+        double dl=closestUtil(left,left.length);
+        double dr=closestUtil(right,right.length);
+
+        double d=Math.min(dl,dr);
+
+        Point[] strip=new Point[n];
+        int k=0;
+
+        for(int i=0;i<n;i++)
+        {
+            if(Math.abs(p[i].x-midpoint.x)<d)
+            {
+                strip[k]=p[i];
+                k++;
+            }
+        }
+
+        return Math.min(d,stripClosest(strip,k,d));
+    }
+
+    public static void main(String[] args)
+    {
+        Point[] points =
+        {
+            new Point(2, 3),
+            new Point(12, 30),
+            new Point(40, 50),
+            new Point(5, 1),
+            new Point(3, 4)
+        };
+
+        sortByX(points);
+
+        double result=closestUtil(points,points.length);
+
+        System.out.println("Minimum distance is :"+result);
+        System.out.println("Closest points are: (" + p1_final.x + "," + p1_final.y + ") and (" + p2_final.x + "," + p2_final.y + ")");
+    }
+}
