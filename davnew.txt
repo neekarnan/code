@@ -1,3 +1,7 @@
+pip install numpy pandas scipy statsmodels scikit-learn matplotlib seaborn plotly requests
+ Linear Regression - Anova
+ Logistic Regression - t test or z test
+
 # ==========================================
 # 1. IMPORT LIBRARIES
 # ==========================================
@@ -21,7 +25,7 @@ import secrets
 # 2. LOAD DATASET
 # ==========================================
 # 👉 Replace with your dataset path
-df = pd.read_csv("data.csv")
+df = pd.read_csv(r"C:\Users\sudharsan\Downloads\D1-actors.csv")
 
 print("\nDataset Loaded Successfully!\n")
 
@@ -43,9 +47,9 @@ print("\nMissing Values:\n", df.isnull().sum())
 # ==========================================
 for col in df.columns:
     if df[col].dtype == 'object':
-        df[col].fillna(df[col].mode()[0], inplace=True)
+        df[col].fillna(df[col].mode()[0])
     else:
-        df[col].fillna(df[col].mean(), inplace=True)
+        df[col].fillna(df[col].mean())
 
 print("\nMissing Values Handled!\n")
 
