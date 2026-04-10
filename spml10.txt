@@ -1,0 +1,47 @@
+Question
+Write your name (handwritten) in big letters.
+Let the strokes be very thick.
+Take a photo of this handwritten text.
+Apply the wavelet transform to find the edges of the handwritten image
+
+import cv2
+import pywt
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+img = cv2.imread(r"C:\Users\Downloads\image.jpeg")
+
+# convert to grayscale
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+
+plt.imshow(gray, cmap='gray')
+plt.title("Original Image")
+plt.axis('off')
+coeffs = pywt.dwt2(gray, 'haar')
+
+LL, (LH, HL, HH) = coeffs
+
+
+titles = ['Approximation (LL)', 'Horizontal edges (LH)', 'Vertical edges (HL)', 'Diagonal edges (HH)']
+
+images = [LL, LH, HL, HH]
+
+
+plt.figure(figsize=(10,8))
+
+for i in range(4):
+    plt.subplot(2,2,i+1)
+    plt.imshow(images[i], cmap='gray')
+    plt.title(titles[i])
+    plt.axis('off')
+
+plt.show()
+edges = np.sqrt(LH**2 + HL**2 + HH**2)
+
+plt.imshow(edges, cmap='gray')
+
+plt.title("Edges using Wavelet Transform")
+
+plt.axis('off')
