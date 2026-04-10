@@ -1,0 +1,158 @@
+Question 1 – Triangular Wave (Fourier Series Experiment)
+Fourier Series of Triangular Wave
+For a triangular wave:
+Only odd harmonics are used.
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def correlation(x, y):
+    return np.corrcoef(x, y)[0, 1]
+
+def triangular_wave(t, A, T):
+    return (2*A/np.pi) * np.arcsin(np.sin(2*np.pi*t/T))
+
+def triangular_fourier(t, A, T, N):
+    y = np.zeros_like(t)
+    for k in range(1, N+1):
+        n = 2*k - 1
+        y += ((-1)**(k-1)) * (1/n**2) * np.sin(2*np.pi*n*t/T)
+
+    return (8*A/np.pi**2) * y
+
+
+A = round(np.random.uniform(1, 100), 1)
+
+T = 1
+
+print("Triangular Wave Amplitude =", A)
+
+t = np.linspace(0, 1, 5000)
+
+tri_real = triangular_wave(t, A, T)
+
+for N in [2, 3, 4]:
+
+    tri_approx = triangular_fourier(t, A, T, N)
+
+    print(f"Correlation using first {N} frequency components = {correlation(tri_real, tri_approx):.6f}")
+
+
+correlations = []
+
+for N in range(1, 51):
+
+    tri_approx = triangular_fourier(t, A, T, N)
+
+    correlations.append(correlation(tri_real, tri_approx))
+
+
+df_tri = pd.DataFrame({
+
+    "Frequency Components": range(1, 51),
+
+    "Correlation": correlations
+
+})
+
+
+print("\nCorrelation Table (Triangular Wave):")
+
+print(df_tri)
+
+
+plt.figure()
+
+plt.plot(range(1, 51), correlations)
+
+plt.xlabel("Number of Frequency Components")
+
+plt.ylabel("Correlation")
+
+plt.title("Triangular Wave: Correlation vs Frequency Components")
+
+plt.grid(True)
+
+plt.show()
+
+Question 2 – Semicircular Wave (Random Period)
+Semicircular Wave Equation
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def correlation(x, y):
+    return np.corrcoef(x, y)[0, 1]
+
+
+def semicircle_wave(t, A, T):
+
+    phase = (t % T) / T
+
+    return A * np.sqrt(1 - (2*phase - 1)**2)
+
+
+def semicircle_fourier(t, A, T, N):
+
+    y = np.zeros_like(t)
+
+    for n in range(1, N+1):
+
+        y += (np.sin(n*np.pi/2) / n) * np.cos(2*np.pi*n*t/T)
+
+    return (4*A/np.pi) * y
+
+
+A = round(np.random.uniform(1, 100), 1)
+
+T = round(np.random.uniform(1, 5), 2)
+
+
+print("Semicircular Wave Amplitude =", A)
+
+print("Semicircular Wave Period =", T)
+
+
+t = np.linspace(0, T, 5000)
+
+semi_real = semicircle_wave(t, A, T)
+
+
+correlations = []
+
+for N in range(1, 51):
+
+    semi_approx = semicircle_fourier(t, A, T, N)
+
+    correlations.append(correlation(semi_real, semi_approx))
+
+
+df_semi = pd.DataFrame({
+
+    "Frequency Components": range(1, 51),
+
+    "Correlation": correlations
+
+})
+
+
+print("\nCorrelation Table (Semicircular Wave):")
+
+print(df_semi)
+
+
+plt.figure()
+
+plt.plot(range(1, 51), correlations)
+
+plt.xlabel("Number of Frequency Components")
+
+plt.ylabel("Correlation")
+
+plt.title("Semicircular Wave: Correlation vs Frequency Components")
+
+plt.grid(True)
+
+plt.show()
