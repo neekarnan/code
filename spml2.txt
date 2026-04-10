@@ -1,0 +1,285 @@
+Plot 1D signals (of your choice) for each of the following cases
+Case 1
+Independent variable: Continuous
+Dependent variable: Continuous
+
+import numpy as np
+import matplotlib.pyplot as plt
+t = np.linspace(0, 2*np.pi, 500)  # 500 points between 0 and 2pi
+y = np.sin(t)  # continuous dependent variable
+plt.figure(figsize=(10,4))
+plt.plot(t, y, color='blue')
+plt.title("Continuous x → Continuous y (Sine wave)")
+plt.xlabel("Time")
+plt.ylabel("Amplitude")
+plt.grid(True)
+plt.show()
+
+Case 2
+Independent variable: Continuous
+Dependent variable: Discrete
+
+y_discrete = np.round(np.sin(t))  # discretized y
+plt.figure(figsize=(10,4))
+plt.plot(t, y_discrete, drawstyle='steps-mid', color='red')
+plt.title("Continuous x → Discrete y (Rounded Sine)")
+plt.xlabel("Time")
+plt.ylabel("Amplitude (Discrete)")
+plt.grid(True)
+plt.show()
+
+Case 3
+Independent variable: Discrete
+Dependent variable: Continuous
+
+import numpy as np
+import matplotlib.pyplot as plt
+n = np.arange(0, 20, 1)  # n = 0,1,...,16
+y_cont = np.sin(n/2)
+plt.figure(figsize=(10,4))
+plt.stem(n, y_cont, basefmt=" ")
+plt.title("Discrete x → Continuous y (Stem Plot)")
+plt.xlabel("Sample n")
+plt.ylabel("Amplitude")
+plt.grid(True)
+plt.show()
+
+Case 4
+Independent variable: Discrete
+Dependent variable: Discrete
+
+y_discrete2 = np.round(np.sin(n/2))
+plt.figure(figsize=(10,4))
+plt.stem(n, y_discrete2, basefmt=" ")
+plt.title("Discrete x → Discrete y")
+plt.xlabel("Sample n")
+plt.ylabel("Amplitude (Discrete)")
+plt.grid(True)
+plt.show()
+
+Plot 2D signals (of your choice) for each of the following cases
+2a
+Independent variable #1: Continuous
+Independent variable #2: Continuous
+Dependent variable: Continuous
+
+import numpy as np
+import matplotlib.pyplot as plt
+x = np.linspace(-5, 5, 200)
+y = np.linspace(-5, 5, 200)
+X, Y = np.meshgrid(x, y)
+Z = np.sin(X) * np.cos(Y)
+plt.figure(figsize=(8,6))
+plt.contourf(X, Y, Z, cmap='viridis')
+plt.colorbar(label='Amplitude')
+plt.title("C–C–C (Continuous x, y → Continuous z)")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.show()
+
+2b
+Independent variable #1: Continuous
+Independent variable #2: Continuous
+Dependent variable: Discrete
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.linspace(-5, 5, 100)
+y = np.linspace(-5, 5, 100)
+
+X, Y = np.meshgrid(x, y)
+
+Z_levels = [0, 1, 2]
+
+fig = plt.figure(figsize=(8,6))
+ax = fig.add_subplot(111, projection='3d')
+
+for z in Z_levels:
+    ax.plot_surface(
+        X, Y, z * np.ones_like(X),
+        alpha=0.8
+    )
+
+ax.set_title("Continuous X, Y → Discrete Z (Air Quality Levels)")
+ax.set_xlabel("X (Continuous Location)")
+ax.set_ylabel("Y (Continuous Location)")
+ax.set_zlabel("Z (Discrete AQI Levels)")
+plt.show()
+
+2c
+Independent variable #1: Continuous
+Independent variable #2: Discrete
+Dependent variable: Continuous
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+time = np.linspace(0, 24, 200)  # 24 hours
+stations = np.array([0, 1, 2, 3, 4])
+
+fig = plt.figure(figsize=(8,6))
+ax = fig.add_subplot(111, projection='3d')
+
+for station in stations:
+    temperature = 20 + 5*np.sin(2*np.pi*time/24) + station
+
+    ax.plot(time, station*np.ones_like(time), temperature, linewidth=2)
+
+ax.set_title("Temperature over Time at Discrete Weather Stations")
+ax.set_xlabel("Time (hours)")
+ax.set_ylabel("Weather Station (Discrete)")
+ax.set_zlabel("Temperature (°C)")
+plt.show()
+
+2d
+Independent variable #1: Continuous
+Independent variable #2: Discrete
+Dependent variable: Discrete
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.linspace(-5, 5, 200)
+y_values = np.array([0, 1, 2, 3])
+
+fig = plt.figure(figsize=(8,6))
+ax = fig.add_subplot(111, projection='3d')
+
+for y in y_values:
+    z = np.round(np.sin(x) + y)
+
+    ax.plot(x, y*np.ones_like(x), z, linewidth=4)
+    ax.text(x[-1], y, z[-1], f"Y={y}", color='red')
+
+ax.set_title("Discrete Traffic Level over Time at Discrete Junctions")
+ax.set_xlabel("Time (Continuous)")
+ax.set_ylabel("Junction (Discrete)")
+ax.set_zlabel("Traffic Level (Discrete)")
+plt.show()
+
+2e
+Independent variable #1: Discrete
+Independent variable #2: Continuous
+Dependent variable: Continuous
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+x_values = np.array([0, 1, 2, 3, 4])
+
+y = np.linspace(-5, 5, 200)
+
+fig = plt.figure(figsize=(8,6))
+ax = fig.add_subplot(111, projection='3d')
+
+for x in x_values:
+    z = np.sin(y) + x
+
+    ax.plot(x*np.ones_like(y), y, z, linewidth=2)
+    ax.text(x, y[-1], z[-1], f"X={x}", color='red')
+
+ax.set_title("Continuous Temperature over Discrete Floors and Continuous Height")
+ax.set_xlabel("Floor Number (Discrete X)")
+ax.set_ylabel("Height (Continuous Y)")
+ax.set_zlabel("Temperature (Continuous Z)")
+plt.show()
+
+2f
+Independent variable #1: Discrete
+Independent variable #2: Continuous
+Dependent variable: Discrete
+
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+servers = np.arange(1, 4)
+time = np.linspace(0, 12, 200)
+
+fig = plt.figure(figsize=(10,7))
+ax = fig.add_subplot(111, projection='3d')
+
+for s in servers:
+
+    activity = np.ones_like(time)
+
+    if s == 1:
+        activity[(time >= 0) & (time <= 1)] = 2
+    elif s == 2:
+        activity[(time >= 5) & (time <= 9)] = 2
+    elif s == 3:
+        activity[(time >= 2) & (time <= 4)] = 2
+
+    ax.plot(
+        np.full_like(time, s),
+        time,
+        activity,
+        linewidth=2,
+        label=f"Server {s}",
+        drawstyle='steps-post'
+    )
+
+ax.set_xlabel("Server (discrete)")
+ax.set_ylabel("Time (hours, continuous)")
+ax.set_zlabel("Activity Level (discrete)")
+ax.set_title("Discrete – Continuous – Discrete: Server Activity Level")
+ax.legend()
+plt.show()
+
+2g
+Independent variable #1: Discrete
+Independent variable #2: Discrete
+Dependent variable: Continuous
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.array([0, 1, 2, 3])
+y = np.array([0, 1, 2, 3])
+
+X, Y = np.meshgrid(x, y)
+
+Z = np.sin(X) + np.cos(Y)
+
+fig = plt.figure(figsize=(8,6))
+ax = fig.add_subplot(111, projection='3d')
+
+ax.scatter(X, Y, Z, s=80)
+
+ax.set_title("Continuous Temperature over Discrete Floors and Rooms")
+ax.set_xlabel("Floor (Discrete X)")
+ax.set_ylabel("Room (Discrete Y)")
+ax.set_zlabel("Temperature (Continuous Z)")
+plt.show()
+
+2h
+Independent variable #1: Discrete
+Independent variable #2: Discrete
+Dependent variable: Discrete
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+classes = np.array([1, 2, 3, 4])  # Class numbers
+sections = np.array([0, 1, 2])    # Sections A=0, B=1, C=2
+
+X, Y = np.meshgrid(classes, sections)
+
+Z = np.array([
+    [30, 28, 26, 25],   # Section A
+    [32, 30, 26, 27],   # Section B
+    [35, 33, 31, 30]    # Section C
+])
+
+fig = plt.figure(figsize=(8,6))
+ax = fig.add_subplot(111, projection='3d')
+
+ax.scatter(X, Y, Z, s=80)
+
+ax.set_xlabel("Class (Discrete)")
+ax.set_ylabel("Section (Discrete)")
+ax.set_zlabel("Students Present (Discrete)")
+ax.set_title("Discrete X – Discrete Y – Discrete Z (Student Attendance)")
+
+plt.show()
