@@ -1,0 +1,122 @@
+Question 1
+
+Look at the given video. There are 5 different clips in this video.
+In every clip you will notice that slow horizontal movements are superimposed on fast vertical movements.
+Using signal processing techniques, find out:
+Vertical tapping rate
+Horizontal moving rate
+
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+from scipy.signal import detrend
+from scipy.fft import fft, fftfreq
+
+video_path = r""
+cap = cv2.VideoCapture(video_path)
+fps = cap.get(cv2.CAP_PROP_FPS)
+total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+frames_per_clip = total_frames // 5
+for clip in range(5):
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, clip * frames_per_clip)
+
+    ret, frame = cap.read()
+
+    frame = cv2.resize(frame, (640,480))
+
+    prev_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    vertical_signal = []
+
+    horizontal_signal = []
+
+
+    for i in range(frames_per_clip - 1):
+
+        ret, frame = cap.read()
+
+        if not ret:
+            break
+
+        frame = cv2.resize(frame, (640,480))
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+
+        flow = cv2.calcOpticalFlowFarneback(
+            prev_gray, gray,
+            None,
+            0.5, 3, 15, 3, 5, 1.2, 0
+        )
+
+
+        horizontal_signal.append(np.mean(np.abs(flow[...,0])))
+
+        vertical_signal.append(np.mean(np.abs(flow[...,1])))
+
+
+        prev_gray = gray
+
+
+    vertical_signal = detrend(np.array(vertical_signal))
+
+    horizontal_signal = detrend(np.array(horizontal_signal))
+
+
+    N = len(vertical_signal)
+
+    xf = fftfreq(N, 1 / fps)
+
+
+    vertical_fft = np.abs(fft(vertical_signal))[:N//2]
+
+    horizontal_fft = np.abs(fft(horizontal_signal))[:N//2]
+
+    freqs = xf[:N//2]
+
+
+    vertical_rate = freqs[np.argmax(vertical_fft[1:]) + 1]
+
+    horizontal_rate = freqs[np.argmax(horizontal_fft[1:]) + 1]
+
+
+    print(f"\nClip {clip+1}")
+
+    print("Vertical tapping rate:", vertical_rate, "Hz")
+
+    print("Horizontal movement rate:", horizontal_rate, "Hz")
+
+
+    plt.figure(figsize=(10,4))
+
+
+    plt.subplot(1,2,1)
+
+    plt.plot(freqs, vertical_fft)
+
+    plt.title(f"Clip {clip+1} - Vertical Motion Spectrum")
+
+    plt.xlabel("Frequency (Hz)")
+
+    plt.ylabel("Amplitude")
+
+
+    plt.subplot(1,2,2)
+
+    plt.plot(freqs, horizontal_fft)
+
+    plt.title(f"Clip {clip+1} - Horizontal Motion Spectrum")
+
+    plt.xlabel("Frequency (Hz)")
+
+    plt.ylabel("Amplitude")
+
+
+    plt.tight_layout()
+
+    plt.show()
+
+
+cap.release()
