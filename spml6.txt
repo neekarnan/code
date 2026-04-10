@@ -1,0 +1,102 @@
+Question 1
+Take electricity consumption of 4 different cities in India, for various months and years.
+Also get the corresponding temperatures for the same months and years.
+Generate graphs:
+Electricity consumption versus time, for various cities.
+Temperature versus time, for various cities.
+Find the correlation between them, for all the cities.
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.graphics.tsaplots import plot_acf
+
+data = pd.read_csv(r"C:\Users\sudharsan\Downloads\city_energy_data (1).csv")
+
+data["Date"] = pd.to_datetime(data["Date"], format="%Y-%m")
+
+cities = ["Chennai", "Ahmedabad", "Bangalore", "Lucknow"]
+
+plt.figure(figsize=(12,6))
+
+for city in cities:
+    plt.plot(data["Date"], data[f"{city}_Elec"], marker='o', label=city)
+
+plt.title("Monthly Electricity Consumption vs Time")
+plt.xlabel("Month")
+plt.ylabel("Electricity Consumption (GWh)")
+plt.xticks(rotation=45)
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(12,6))
+
+for city in cities:
+    plt.plot(data["Date"], data[f"{city}_Temp"], marker='s', label=city)
+
+plt.title("Monthly Average Temperature vs Time")
+plt.xlabel("Month")
+plt.ylabel("Temperature (°C)")
+plt.xticks(rotation=45)
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+print("Correlation between Temperature and Electricity Consumption:\n")
+
+for city in cities:
+    corr = data[f"{city}_Temp"].corr(data[f"{city}_Elec"])
+    print(f"{city}: {corr:.3f}")
+
+plt.figure(figsize=(10,5))
+
+plot_acf(data["Chennai_Elec"], lags=12)
+
+plt.title("Autocorrelation of Chennai Electricity Consumption")
+
+plt.show()
+
+Question 2
+Take traffic data at a junction.
+Generate a graph of number of vehicles versus time of the day.
+Use autocorrelation to find any pattern embedded in the graph.
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import acf
+
+df = pd.read_csv(r"C:\Users\sudharsan\Downloads\vehicle_data.csv")
+
+time_hours = df["hour"]
+traffic = df["vehicles"]
+
+plt.figure(figsize=(12,5))
+
+plt.plot(time_hours, traffic, marker='o')
+
+plt.xlabel("Time of Day (Hours)")
+plt.ylabel("Number of Vehicles")
+plt.title("Traffic Flow at Junction")
+
+plt.xticks(range(0, 24))
+
+plt.grid(True)
+
+plt.show()
+
+acf_values = acf(traffic, nlags=12)
+
+plt.figure(figsize=(10,5))
+
+plt.stem(acf_values)
+
+plt.xlabel("Lag (Hours)")
+plt.ylabel("Autocorrelation")
+
+plt.title("Autocorrelation of Traffic Data")
+
+plt.grid(True)
+
+plt.show()
