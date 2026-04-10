@@ -1,0 +1,81 @@
+Question 1
+
+Take two selfies:
+
+One in bright sunlight (light should be falling on your face).
+One inside a room with normal lighting.
+Cameras may produce colour images. When you read the image using a program, it will generate three matrices
+Red
+Green
+Blue
+Consider these matrices separately.
+The matrix values will be from 0 to 255 (positive integers).
+Perform Fourier Transform (FT) for both images, for all the matrices.
+Show them as:
+2D images
+Heat maps
+Try to interpret them.
+
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+# Load Images
+
+img1 = cv2.imread("bright.jpg")
+
+img2 = cv2.imread("normal.jpg")
+
+img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+
+img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
+def process_image(img, title):
+
+    channels = ['Red', 'Green', 'Blue']
+
+    for i, channel in enumerate(channels):
+
+        data = img[:,:,i]
+
+        f = np.fft.fft2(data)
+
+        fshift = np.fft.fftshift(f)
+
+        magnitude = np.log(1 + np.abs(fshift))
+
+
+        plt.imshow(magnitude, cmap='hot')
+
+        plt.title(f"{title} - {channel} Channel (Heatmap)")
+
+        plt.colorbar()
+
+        plt.show()
+
+
+        x = np.arange(magnitude.shape[1])
+
+        y = np.arange(magnitude.shape[0])
+
+
+        x, y = np.meshgrid(x, y)
+
+        fig = plt.figure()
+
+        ax = fig.add_subplot(111, projection='3d')
+
+        ax.plot_surface(x, y, magnitude)
+
+        ax.set_title(f"{title} - {channel} Channel (3D FFT)")
+
+        ax.set_xlabel("X")
+
+        ax.set_ylabel("Y")
+
+        ax.set_zlabel("Magnitude")
+
+        plt.show()
+
+        process_image(img1, "Bright Light")
+
+        process_image(img2, "Normal Light")
