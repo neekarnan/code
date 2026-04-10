@@ -1,0 +1,100 @@
+Plot the signal defined by:
+y=e-x²
+where x is independent variable.
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.linspace(-10, 10, 20000)
+y = np.exp(-x**2)
+
+plt.figure(figsize=(8,5))
+plt.plot(x, y)
+plt.xlabel("x")
+plt.ylabel("y")
+plt.title("Plot of y = e^(-x^2)")
+plt.grid(True)
+plt.show()
+
+shifts = [-4, 2]
+
+for s in shifts:
+    ys = np.exp(-(x - s)**2)
+
+    plt.figure(figsize=(8,5))
+    plt.plot(x, ys)
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title("Shifted Signal y = e^(-(x - " + str(s) + ")^2)")
+    plt.grid(True)
+    plt.show()
+
+qn2:Write a program to compute the energy of this signal.
+
+import numpy as np
+
+x = np.linspace(-10, 10, 20000)
+y = np.exp(-x**2)
+
+dx = x[1] - x[0]
+
+energy = 0
+
+for i in range(len(x) - 1):
+    energy += ((y[i]**2 + y[i+1]**2) / 2) * dx
+
+print("The Energy of the Signal y = e^(-x^2) is: ", energy)
+
+qn3:Try to plot the signal defined as
+	​
+Parameter μ shifts the curve along the X-axis.
+Parameter σ changes the width of the curve (narrowing/widening).
+Fix μ = 0.
+Compute the energy of the signal for σ = 1.
+Reduce σ, but the energy should remain constant.
+Plot f(x) for various values of σ.
+Plot a graph between height and σ.
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.linspace(-10, 10, 20000)
+
+mu = 0
+sigma = 1
+
+f = (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp(-(x - mu)**2 / (2 * sigma**2))
+
+dx = x[1] - x[0]
+
+energy = 0
+
+for i in range(len(x) - 1):
+    energy += ((f[i]**2 + f[i+1]**2) / 2) * dx
+
+print("The Energy of the Signal y = e^(-x^2) is: ", energy)
+
+sigmas = [1, 0.8, 0.6, 0.4, 0.2]
+heights = []
+
+for s in sigmas:
+    h = 1 / np.sqrt(s)
+    heights.append(h)
+
+    g = h * np.exp(-(x**2) / (2 * s**2))
+
+    plt.figure(figsize=(8,5))
+    plt.plot(x, g)
+    plt.xlabel("x")
+    plt.ylabel("Amplitude")
+    plt.title("Scaled Gaussian Signal (σ = " + str(s) + ")")
+    plt.grid(True)
+    plt.show()
+
+plt.figure(figsize=(8,5))
+plt.plot(sigmas, heights, marker='o')
+plt.xlabel("Sigma (σ)")
+plt.ylabel("Height Scaling Factor")
+plt.title("Height vs Sigma for Constant Energy")
+plt.grid(True)
+plt.show()
