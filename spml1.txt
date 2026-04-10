@@ -1,0 +1,67 @@
+qn1:Plot the spatial signal - Consider various cities from Kanyakumari to
+Kolkata (follow south to north order). At any given time instant, plot
+temperature versus cities in the same order.
+
+
+import matplotlib.pyplot as plt
+cities[
+"Kanyakumari", "Madurai", "Chennai", "Bengaluru",
+"Hyderabad", "Nagpur", "Bhopal", "Varanasi",
+"Patna", "Kolkata"
+temperature = [30, 32, 34, 28, 31, 29, 27, 26, 25, 24]
+plt.figure(figsize=(8, 5))
+plt.scatter(cities, temperature)
+plt.grid(True)
+plt.xlabel("Cities (Kanyakumari to Kolkata)")
+plt.ylabel("Temperature (°C)")
+plt.title("Spatial Signal (Cities vs Temperature)")
+plt.xticks(rotation=45) plt.tight_layout() plt.show()
+
+Qn: 2 Plot the spatial signal - Consider various cities from Kanyakumari to
+Mumbai. At any given time instant, plot temperature versus cities in
+the same order.
+
+import matplotlib.pyplot as plt
+cities =[
+"Kanyakumari",
+"Madurai",
+"Chennai".
+"Bengaluru",
+"Hyderabad",
+"Nagpur",
+1
+"Mumbai"
+temperature = [30, 32, 34, 28, 31, 29, 27]
+plt.figure(figsize=(8, 5))
+plt.scatter(cities, temperature)
+plt.grid(True) plt.xlabel("Cities (Kanyakumari to Mumbai)")
+plt.ylabel("Temperature (°C)")
+plt.title("Spatial Signal: Temperature vs Cities at a Given Time Instant")
+plt.xticks(rotation=45) plt.tight_layout) plt.show)
+
+qn3:
+Take a random paragraph in English. Count the number of each alphabet and
+plot them in the order. Count the space and ignore the small/capital cases
+and punctuations. Let the space be 27th position.
+
+import matplotlib.pyplot as plt
+import string
+text = "
+Machine learning is a branch of artificial intelligence that focuses on
+building systems that learn from data and improve their performance over time.
+text = text.lower()
+counts = {ch: 0 for ch in string.ascii_lowercase}
+space_count = 0
+for ch in text:
+if ch in counts:
+counts[ch] += 1
+elif ch=='!
+space_count +=1
+labels = list(string.ascii_lowercase) + ['space']
+values = [counts[ch] for ch in string.ascii_lowercase] + [space_count]
+plt.scatter(labels, values)
+plt.xlabel("Alphabets (A-Z) and Space (27th)")
+plt.ylabel("Frequency")
+plt.title("Alphabet Frequency Scatter Plot (Space as 27th)")
+plt.grid(True)
+plt.showO
