@@ -1,0 +1,101 @@
+You speak a sentence (at least 30 seconds) and record it. Read it into a file.
+Assume there are N samples.
+Take sample#1 to sample#3, average it and store it.
+Take sample#2 to sample#4, average it and store it.
+Take sample#3 to sample#5, average it and store it.
+Continue this process using a sliding window averaging technique.
+Play the original audio and the newly generated averaged audio, listen to them and comment.
+
+!pip install sounddevice scipy numpy matplotlib
+# Recording Audio Sample
+
+import sounddevice as sd
+from scipy.io.wavfile import write
+import numpy as np
+print("Recording... Please speak now")
+fs = 44100   # Sampling frequency
+duration = 30   # seconds
+recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
+sd.wait()
+print("Recording finished")
+write("original.wav", fs, recording)
+
+# Reading the Recorded Audio File
+from scipy.io import wavfile
+fs, data = wavfile.read("original.wav")
+data = data.astype(np.float32)   # Convert to float for processing
+N = len(data)
+print("Number of samples (N):", N)
+
+# 3-Sample Sliding Window Averaging
+
+window_size = 3
+averaged_data = np.zeros(N - window_size + 1)
+
+for i in range(N - window_size + 1):
+    averaged_data[i] = np.mean(data[i:i + window_size])
+
+# Normalize before saving
+
+averaged_data_int = np.int16(
+    averaged_data / np.max(np.abs(averaged_data)) * 32767
+)
+
+write("averaged.wav", fs, averaged_data_int)
+
+# Play the audio files
+
+from IPython.display import Audio
+
+print("Original Audio:")
+Audio("original.wav")
+
+print("Averaged Audio:")
+Audio("averaged.wav")
+
+# Plot Original Speech Signal
+
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(12,4))
+plt.plot(data)
+plt.title("Original Speech Signal")
+plt.xlabel("Samples")
+plt.ylabel("Amplitude")
+plt.show()
+
+# Plot Filtered Speech Signal
+
+plt.figure(figsize=(12,4))
+plt.plot(averaged_data)
+plt.title("Filtered Speech Signal")
+plt.xlabel("Samples")
+plt.ylabel("Amplitude")
+plt.show()
+
+# Signal Comparison (Original vs Filtered)
+
+min_len = len(averaged_data)
+
+plt.figure(figsize=(12,5))
+plt.plot(data[:min_len], label="Original")
+plt.plot(averaged_data, label="Filtered")
+plt.legend()
+plt.title("Signal Comparison (Original vs Filtered)")
+plt.xlabel("Samples")
+plt.ylabel("Amplitude")
+plt.show()
+
+# Comparison (First 500 Samples)
+
+plt.figure(figsize=(12,5))
+
+plt.plot(data[:500], label="Original")
+plt.plot(averaged_data[:500], label="Filtered")
+
+plt.legend()
+plt.title("Comparison (First 500 Samples)")
+plt.xlabel("Samples")
+plt.ylabel("Amplitude")
+
+plt.show()
