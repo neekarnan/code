@@ -1,0 +1,65 @@
+# 1. Import libraries
+import pandas as pd
+import numpy as np
+
+# 2. Load dataset
+df = pd.read_csv("data.csv")
+
+# =====================================
+# 🔹 FEATURE ENGINEERING (ADD NEW COLUMN)
+# =====================================
+
+# Example: Create new feature (BMI = weight / height^2)
+# (Modify based on dataset)
+
+df['BMI'] = df['Weight'] / (df['Height'] ** 2)
+
+# Example: Combine features
+df['Age_BP'] = df['Age'] * df['Blood Pressure']
+
+# =====================================
+# 🔹 REMOVE UNNECESSARY FEATURES
+# =====================================
+
+# Drop columns that are not useful (like ID)
+df = df.drop(['Patient ID'], axis=1)
+
+# =====================================
+# 🔹 HANDLE CATEGORICAL DATA
+# =====================================
+
+# Convert text to numbers
+df = pd.get_dummies(df, drop_first=True)
+
+# =====================================
+# 🔹 FEATURE SELECTION (BEST FEATURES)
+# =====================================
+
+# Method 1: Correlation (simple method)
+corr = df.corr()
+
+# Select features highly correlated with target
+selected_features = corr['Heart Attack Risk'].abs().sort_values(ascending=False)
+
+print("Feature Importance:\n", selected_features)
+
+# Keep top features (example: top 5)
+top_features = selected_features.index[1:6]
+
+X = df[top_features]
+y = df['Heart Attack Risk']
+
+# =====================================
+# 🔹 OPTIONAL: REMOVE LOW VARIANCE FEATURES
+# =====================================
+
+from sklearn.feature_selection import VarianceThreshold
+
+selector = VarianceThreshold(threshold=0.01)
+X = selector.fit_transform(X)
+
+# =====================================
+# FINAL OUTPUT
+# =====================================
+
+print("Final Features Shape:", X.shape)
