@@ -1,178 +1,86 @@
-# ==========================================================
-# 1. IMPORT LIBRARIES
-# ==========================================================
-# These are tools you need. Think of them as your toolbox.
+# 1. Import libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-import pandas as pd              # For working with datasets
-import numpy as np               # For numerical operations
-import matplotlib.pyplot as plt  # For plotting graphs
-import seaborn as sns            # For advanced visualizations
-
-# Machine Learning tools
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import (
-    accuracy_score,
-    confusion_matrix,
-    classification_report
-)
+from sklearn.preprocessing import StandardScaler
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
-# Different types of Naive Bayes models
-from sklearn.naive_bayes import GaussianNB, MultinomialNB, BernoulliNB
+# 2. Load dataset
+df = pd.read_csv("data.csv")   # change filename in exam
 
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-
-
-# ==========================================================
-# 2. LOAD DATASET
-# ==========================================================
-# Replace 'your_file.csv' with your dataset path
-
-data = pd.read_csv('your_file.csv')
-
-# Look at first few rows
-print("\nFirst 5 rows:\n", data.head())
-
-# Understand dataset structure
-print("\nDataset Info:\n")
-print(data.info())
-
-# Summary statistics
-print("\nSummary:\n", data.describe())
-
-
-# ==========================================================
-# 3. REMOVE DUPLICATES
-# ==========================================================
-data = data.drop_duplicates()
-
-
-# ==========================================================
-# 4. HANDLE MISSING VALUES
-# ==========================================================
-print("\nMissing Values:\n", data.isnull().sum())
-
-# Separate numeric and categorical columns
-num_cols = data.select_dtypes(include=np.number).columns
-cat_cols = data.select_dtypes(include='object').columns
-
-# Fill numerical missing values with mean
-data[num_cols] = data[num_cols].fillna(data[num_cols].mean())
-
-# Fill categorical missing values with most frequent value
-for col in cat_cols:
-    data[col].fillna(data[col].mode()[0], inplace=True)
-
-
-# ==========================================================
-# 5. ENCODE CATEGORICAL VARIABLES
-# ==========================================================
-# Convert text data into numbers
-
-# One-hot encoding (recommended)
-data = pd.get_dummies(data, drop_first=True)
-
-
-# ==========================================================
-# 6. DEFINE FEATURES AND TARGET
-# ==========================================================
-# Replace 'target_column' with your output column
-
-target_column = 'target_column'
-
-X = data.drop(target_column, axis=1)
-y = data[target_column]
-
-
-# ==========================================================
-# 7. HANDLE TARGET VARIABLE
-# ==========================================================
-# Convert target into numbers if it's categorical
-
-if y.dtype == 'object':
-    le = LabelEncoder()
-    y = le.fit_transform(y)
-
-
-# ==========================================================
-# 8. FEATURE SCALING (OPTIONAL BUT SAFE)
-# ==========================================================
-# Naive Bayes doesn't always need scaling,
-# but GaussianNB works better with it sometimes
-
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-
-# ==========================================================
-# 9. TRAIN-TEST SPLIT
-# ==========================================================
+# 3. Select ONLY 2 features (IMPORTANT for decision boundary)
+X = df[['Age', 'Cholesterol']].values   # example feature names
+y = df['Heart Attack Risk'].values
+# 4. Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=0.2, random_state=42
+    X, y, test_size=0.2, random_state=42
 )
 
+# 5. Feature scaling
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-# ==========================================================
-# 10. CHOOSE NAIVE BAYES MODEL TYPE
-# ==========================================================
-# This is IMPORTANT
-
-# GaussianNB → continuous data (most common)
-# MultinomialNB → count data (text, frequencies)
-# BernoulliNB → binary data (0/1)
-
+# 6. Train Naive Bayes model
 model = GaussianNB()
-
-
-# ==========================================================
-# 11. TRAIN MODEL
-# ==========================================================
 model.fit(X_train, y_train)
 
-
-# ==========================================================
-# 12. MAKE PREDICTIONS
-# ==========================================================
+# 7. Predictions
 y_pred = model.predict(X_test)
 
+# 8. Accuracy
+print("Accuracy:", accuracy_score(y_test, y_pred))
 
-# ==========================================================
-# 13. EVALUATE MODEL
-# ==========================================================
-print("\nAccuracy:", accuracy_score(y_test, y_pred))
+# 9. Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+print("Confusion Matrix:\n", cm)
 
-print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
-
-print("\nClassification Report:\n",
-      classification_report(y_test, y_pred))
-
-
-# ==========================================================
-# 14. OPTIONAL: PROBABILITIES
-# ==========================================================
-# Shows probability of each class
-
-y_prob = model.predict_proba(X_test)
-print("\nSample Probabilities:\n", y_prob[:5])
-
-
-# ==========================================================
-# 15. VISUALIZATION (OPTIONAL)
-# ==========================================================
-# Correlation heatmap (useful for understanding data)
-
-plt.figure(figsize=(10, 8))
-sns.heatmap(data.corr(), cmap='coolwarm')
-plt.title("Correlation Heatmap")
+# Heatmap visualization
+sns.heatmap(cm, annot=True, fmt='d', cmap='coolwarm')
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
 plt.show()
 
+# 10. Classification Report
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
 
-# ==========================================================
-# 16. PREDICT NEW DATA
-# ==========================================================
-# Replace with actual values
 
-# new_data = np.array([[val1, val2, val3, ...]])
-# new_data_scaled = scaler.transform(new_data)
-# prediction = model.predict(new_data_scaled)
+# ================================
+# 11. Decision Boundary Function
+# ================================
+def plot_naive_bayes_boundary(model, X, y):
 
-# print("Prediction:", prediction)
+    # Define min and max values for grid
+    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+
+    # Create meshgrid
+    xx, yy = np.meshgrid(
+        np.linspace(x_min, x_max, 200),
+        np.linspace(y_min, y_max, 200)
+    )
+
+    # Predict for each grid point
+    Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+
+    # Plot decision boundary
+    plt.figure()
+    plt.contourf(xx, yy, Z, alpha=0.4, cmap='coolwarm')
+
+    # Plot actual data points
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap='coolwarm')
+
+    plt.xlabel("Feature 1")
+    plt.ylabel("Feature 2")
+    plt.title("Naive Bayes Decision Boundary")
+    plt.show()
+
+
+# 12. Call function (use training data)
+plot_naive_bayes_boundary(model, X_train, y_train)
