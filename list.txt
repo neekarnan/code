@@ -1,0 +1,1 @@
+curl -s https://api.github.com/repos/USERNAME/REPO/contents/ | jq -r '.[] | select(.type=="file") | .name'
