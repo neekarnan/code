@@ -1,0 +1,1266 @@
+# ============================================================
+# DEEP LEARNING LABS 2, 3, 4, 5 and 5b
+# Jupyter-ready single Python file
+# ============================================================
+# NOTE:
+# - Lab 2 requires TensorFlow/Keras.
+# - Labs 3, 4, 5 and 5b require PyTorch/torchvision.
+# - Run each LAB section separately in Jupyter when needed.
+# - The experiment flags at the start of each section control what runs.
+
+# ============================================================
+# LAB 2 - MLP HYPERPARAMETER TUNING ON MNIST (KERAS)
+# ============================================================
+
+# If TensorFlow is not installed in your Jupyter environment, install it once:
+# %pip install tensorflow matplotlib pandas
+
+import time
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+try:
+    import tensorflow as tf
+    from tensorflow.keras.datasets import mnist
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Dense, Flatten, BatchNormalization
+    from tensorflow.keras.optimizers import Adam, SGD
+    TF_AVAILABLE = True
+except ImportError:
+    TF_AVAILABLE = False
+    print("TensorFlow is not installed. Install it with: %pip install tensorflow")
+
+
+def lab2_build_model(hidden_layers=1, neurons=128, activation="relu",
+                     optimizer_name="adam", lr=0.001, batch_norm=False):
+    model = Sequential()
+    model.add(Flatten(input_shape=(28, 28)))
+
+    for _ in range(hidden_layers):
+        model.add(Dense(neurons, activation=activation))
+        if batch_norm:
+            model.add(BatchNormalization())
+
+    model.add(Dense(10, activation="softmax"))
+
+    if optimizer_name == "adam":
+        opt = Adam(learning_rate=lr)
+    elif optimizer_name == "sgd":
+        opt = SGD(learning_rate=lr)
+    else:
+        raise ValueError("optimizer_name must be 'adam' or 'sgd'")
+
+    model.compile(
+        optimizer=opt,
+        loss="sparse_categorical_crossentropy",
+        metrics=["accuracy"]
+    )
+    return model
+
+
+def lab2_train(model, x_train, y_train, x_val, y_val,
+               epochs=10, batch_size=128):
+    start = time.time()
+    history = model.fit(
+        x_train, y_train,
+        epochs=epochs,
+        batch_size=batch_size,
+        validation_data=(x_val, y_val),
+        verbose=1
+    )
+    elapsed = time.time() - start
+    return history, elapsed
+
+
+def lab2_plot_loss(histories, title):
+    plt.figure(figsize=(9, 5))
+    for name, h in histories.items():
+        plt.plot(h.history["loss"], marker="o", label=name)
+    plt.xlabel("Epoch")
+    plt.ylabel("Training Loss")
+    plt.title(title)
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+if TF_AVAILABLE:
+    # Load and preprocess MNIST exactly as required by the manual.
+    (l2_x_train, l2_y_train), (l2_x_test, l2_y_test) = mnist.load_data()
+    l2_x_train = l2_x_train.astype("float32") / 255.0
+    l2_x_test = l2_x_test.astype("float32") / 255.0
+
+    l2_x_val = l2_x_train[-10000:]
+    l2_y_val = l2_y_train[-10000:]
+    l2_x_train = l2_x_train[:-10000]
+    l2_y_train = l2_y_train[:-10000]
+
+    L2_EPOCHS = 10
+    L2_BASE_BATCH = 128
+
+    # ---------------- BASELINE ----------------
+    print("\nLAB 2 - BASELINE")
+    l2_model = lab2_build_model()
+    l2_start = time.time()
+    l2_hist = l2_model.fit(
+        l2_x_train, l2_y_train,
+        epochs=L2_EPOCHS,
+        batch_size=L2_BASE_BATCH,
+        validation_data=(l2_x_val, l2_y_val),
+        verbose=1
+    )
+    l2_time = time.time() - l2_start
+    _, l2_test_acc = l2_model.evaluate(l2_x_test, l2_y_test, verbose=0)
+
+    print("Training Accuracy:", l2_hist.history["accuracy"][-1])
+    print("Validation Accuracy:", l2_hist.history["val_accuracy"][-1])
+    print("Test Accuracy:", l2_test_acc)
+    print("Training Loss:", l2_hist.history["loss"][-1])
+    print("Training Time:", l2_time, "seconds")
+
+    # ---------------- TASK 1: OPTIMIZERS ----------------
+    # GD = one update using the entire training set.
+    # SGD = batch size 1.
+    # BGD = batch size 128 as specified in the exercise.
+    l2_optimizer_settings = [
+        ("GD", "sgd", len(l2_x_train)),
+        ("SGD", "sgd", 1),
+        ("BGD", "sgd", 128),
+        ("Adam", "adam", 128)
+    ]
+
+    l2_optimizer_results = {}
+    l2_optimizer_histories = {}
+
+    for name, opt_name, bs in l2_optimizer_settings:
+        print("\nLAB 2 TASK 1:", name)
+        m = lab2_build_model(optimizer_name=opt_name, lr=0.001)
+        start = time.time()
+        h = m.fit(
+            l2_x_train, l2_y_train,
+            epochs=10,
+            batch_size=bs,
+            validation_data=(l2_x_val, l2_y_val),
+            verbose=0
+        )
+        elapsed = time.time() - start
+        _, acc = m.evaluate(l2_x_test, l2_y_test, verbose=0)
+        l2_optimizer_histories[name] = h
+        l2_optimizer_results[name] = {
+            "test_accuracy": acc,
+            "training_time": elapsed
+        }
+        print("Test Accuracy:", acc)
+        print("Training Time:", elapsed)
+
+    lab2_plot_loss(l2_optimizer_histories, "Task 1 - Training Loss vs Epoch")
+
+    # ---------------- TASK 2: BATCH NORMALIZATION ----------------
+    l2_bn_histories = {}
+    l2_bn_results = {}
+
+    for use_bn in [False, True]:
+        name = "With BatchNorm" if use_bn else "Without BatchNorm"
+        print("\nLAB 2 TASK 2:", name)
+        m = lab2_build_model(batch_norm=use_bn)
+        start = time.time()
+        h = m.fit(
+            l2_x_train, l2_y_train,
+            epochs=10,
+            batch_size=128,
+            validation_data=(l2_x_val, l2_y_val),
+            verbose=0
+        )
+        elapsed = time.time() - start
+        _, acc = m.evaluate(l2_x_test, l2_y_test, verbose=0)
+        l2_bn_histories[name] = h
+        l2_bn_results[name] = {
+            "test_accuracy": acc,
+            "training_time": elapsed
+        }
+        print("Test Accuracy:", acc)
+
+    lab2_plot_loss(l2_bn_histories, "Task 2 - Batch Normalization")
+
+    # ---------------- TASK 3: LEARNING RATE ----------------
+    l2_lr_histories = {}
+    l2_lr_results = {}
+
+    for lr in [0.1, 0.01, 0.001, 0.0001]:
+        print("\nLAB 2 TASK 3: LR =", lr)
+        m = lab2_build_model(lr=lr)
+        start = time.time()
+        h = m.fit(
+            l2_x_train, l2_y_train,
+            epochs=10,
+            batch_size=128,
+            validation_data=(l2_x_val, l2_y_val),
+            verbose=0
+        )
+        elapsed = time.time() - start
+        _, acc = m.evaluate(l2_x_test, l2_y_test, verbose=0)
+        l2_lr_histories[str(lr)] = h
+        l2_lr_results[str(lr)] = acc
+        print("Test Accuracy:", acc)
+
+    lab2_plot_loss(l2_lr_histories, "Task 3 - Learning Rate")
+
+    # ---------------- TASK 4: NUMBER OF NEURONS ----------------
+    l2_neuron_histories = {}
+    l2_neuron_results = {}
+
+    for neurons in [32, 64, 128, 256, 512]:
+        print("\nLAB 2 TASK 4: Neurons =", neurons)
+        m = lab2_build_model(neurons=neurons)
+        start = time.time()
+        h = m.fit(
+            l2_x_train, l2_y_train,
+            epochs=10,
+            batch_size=128,
+            validation_data=(l2_x_val, l2_y_val),
+            verbose=0
+        )
+        elapsed = time.time() - start
+        _, acc = m.evaluate(l2_x_test, l2_y_test, verbose=0)
+        l2_neuron_histories[str(neurons)] = h
+        l2_neuron_results[str(neurons)] = {
+            "test_accuracy": acc,
+            "training_time": elapsed
+        }
+        print("Test Accuracy:", acc)
+        print("Training Time:", elapsed)
+
+    lab2_plot_loss(l2_neuron_histories, "Task 4 - Number of Neurons")
+
+    # ---------------- TASK 5: HIDDEN LAYERS ----------------
+    l2_layer_histories = {}
+    l2_layer_results = {}
+
+    for layers in [1, 2, 3, 4]:
+        print("\nLAB 2 TASK 5: Hidden Layers =", layers)
+        m = lab2_build_model(hidden_layers=layers)
+        start = time.time()
+        h = m.fit(
+            l2_x_train, l2_y_train,
+            epochs=10,
+            batch_size=128,
+            validation_data=(l2_x_val, l2_y_val),
+            verbose=0
+        )
+        elapsed = time.time() - start
+        _, acc = m.evaluate(l2_x_test, l2_y_test, verbose=0)
+        l2_layer_histories[str(layers)] = h
+        l2_layer_results[str(layers)] = {
+            "test_accuracy": acc,
+            "training_time": elapsed
+        }
+        print("Test Accuracy:", acc)
+
+    lab2_plot_loss(l2_layer_histories, "Task 5 - Hidden Layers")
+
+    # ---------------- TASK 6: ACTIVATION ----------------
+    l2_activation_histories = {}
+    l2_activation_results = {}
+
+    for activation in ["relu", "sigmoid"]:
+        print("\nLAB 2 TASK 6: Activation =", activation)
+        m = lab2_build_model(activation=activation)
+        start = time.time()
+        h = m.fit(
+            l2_x_train, l2_y_train,
+            epochs=10,
+            batch_size=128,
+            validation_data=(l2_x_val, l2_y_val),
+            verbose=0
+        )
+        elapsed = time.time() - start
+        _, acc = m.evaluate(l2_x_test, l2_y_test, verbose=0)
+        l2_activation_histories[activation] = h
+        l2_activation_results[activation] = acc
+        print("Test Accuracy:", acc)
+
+    lab2_plot_loss(l2_activation_histories, "Task 6 - Activation Functions")
+
+    # ---------------- TASK 7: FINAL MODEL ----------------
+    # Start with the manual's example configuration. If you experimentally
+    # find better settings, replace these values with your best values.
+    print("\nLAB 2 TASK 7 - FINAL MODEL")
+    l2_final_model = lab2_build_model(
+        hidden_layers=1,
+        neurons=512,
+        activation="relu",
+        optimizer_name="adam",
+        lr=0.001,
+        batch_norm=True
+    )
+
+    l2_final_hist, l2_final_time = lab2_train(
+        l2_final_model,
+        l2_x_train, l2_y_train,
+        l2_x_val, l2_y_val,
+        epochs=10,
+        batch_size=128
+    )
+
+    _, l2_final_test_acc = l2_final_model.evaluate(
+        l2_x_test, l2_y_test, verbose=0
+    )
+    print("Final Test Accuracy:", l2_final_test_acc)
+
+
+# ============================================================
+# LAB 3 - SHALLOW VS DEEP MLP ON FASHION-MNIST (PYTORCH)
+# ============================================================
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, random_split
+from torchvision import datasets, transforms
+
+l3_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("\nLAB 3 DEVICE:", l3_device)
+
+l3_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5,), (0.5,)),
+    transforms.Lambda(lambda x: x.view(-1))
+])
+
+l3_full_train = datasets.FashionMNIST(
+    root="./data", train=True, download=True, transform=l3_transform
+)
+l3_test_set = datasets.FashionMNIST(
+    root="./data", train=False, download=True, transform=l3_transform
+)
+
+l3_train_set, l3_val_set = random_split(
+    l3_full_train,
+    [48000, 12000],
+    generator=torch.Generator().manual_seed(42)
+)
+
+L3_BATCH_SIZE = 128
+L3_EPOCHS = 10
+
+l3_train_loader = DataLoader(l3_train_set, batch_size=L3_BATCH_SIZE, shuffle=True)
+l3_val_loader = DataLoader(l3_val_set, batch_size=L3_BATCH_SIZE, shuffle=False)
+l3_test_loader = DataLoader(l3_test_set, batch_size=L3_BATCH_SIZE, shuffle=False)
+
+
+class ShallowMLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(784, 128),
+            nn.ReLU(),
+            nn.Linear(128, 10)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class DeepMLP(nn.Module):
+    def __init__(self, width=128, dropout=0.3):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(784, width),
+            nn.BatchNorm1d(width),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+
+            nn.Linear(width, width),
+            nn.BatchNorm1d(width),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+
+            nn.Linear(width, width),
+            nn.BatchNorm1d(width),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+
+            nn.Linear(width, width),
+            nn.BatchNorm1d(width),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+
+            nn.Linear(width, 10)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+def l3_train_model(model, train_loader, val_loader, epochs=10,
+                    lr=0.001, optimizer_name="adam"):
+    criterion = nn.CrossEntropyLoss()
+
+    if optimizer_name == "adam":
+        optimizer = optim.Adam(model.parameters(), lr=lr)
+    elif optimizer_name == "sgd":
+        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+    else:
+        raise ValueError("optimizer_name must be 'adam' or 'sgd'")
+
+    history = {
+        "train_loss": [], "val_loss": [],
+        "train_acc": [], "val_acc": [],
+        "epoch_time": []
+    }
+
+    total_start = time.time()
+
+    for epoch in range(epochs):
+        epoch_start = time.time()
+        model.train()
+        train_loss = 0.0
+        train_correct = 0
+        train_total = 0
+
+        for x, y in train_loader:
+            x, y = x.to(l3_device), y.to(l3_device)
+            optimizer.zero_grad()
+            out = model(x)
+            loss = criterion(out, y)
+            loss.backward()
+            optimizer.step()
+
+            train_loss += loss.item() * x.size(0)
+            train_correct += (out.argmax(1) == y).sum().item()
+            train_total += y.size(0)
+
+        model.eval()
+        val_loss = 0.0
+        val_correct = 0
+        val_total = 0
+
+        with torch.no_grad():
+            for x, y in val_loader:
+                x, y = x.to(l3_device), y.to(l3_device)
+                out = model(x)
+                loss = criterion(out, y)
+                val_loss += loss.item() * x.size(0)
+                val_correct += (out.argmax(1) == y).sum().item()
+                val_total += y.size(0)
+
+        history["train_loss"].append(train_loss / train_total)
+        history["val_loss"].append(val_loss / val_total)
+        history["train_acc"].append(train_correct / train_total)
+        history["val_acc"].append(val_correct / val_total)
+        history["epoch_time"].append(time.time() - epoch_start)
+
+        print(
+            f"Epoch [{epoch+1}/{epochs}] "
+            f"Train Loss: {history['train_loss'][-1]:.4f} "
+            f"Train Acc: {history['train_acc'][-1]:.4f} "
+            f"Val Loss: {history['val_loss'][-1]:.4f} "
+            f"Val Acc: {history['val_acc'][-1]:.4f}"
+        )
+
+    history["training_time"] = time.time() - total_start
+    return history
+
+
+def l3_evaluate(model, loader):
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for x, y in loader:
+            x, y = x.to(l3_device), y.to(l3_device)
+            correct += (model(x).argmax(1) == y).sum().item()
+            total += y.size(0)
+    return correct / total
+
+
+def l3_count_params(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+# ---------------- LAB 3 TASKS 1-4 ----------------
+print("\nLAB 3 - SHALLOW MLP")
+l3_shallow = ShallowMLP().to(l3_device)
+print("Parameters:", l3_count_params(l3_shallow))
+l3_shallow_hist = l3_train_model(
+    l3_shallow, l3_train_loader, l3_val_loader, epochs=L3_EPOCHS
+)
+l3_shallow_test = l3_evaluate(l3_shallow, l3_test_loader)
+print("Shallow Test Accuracy:", l3_shallow_test)
+print("Shallow Time/Epoch:", np.mean(l3_shallow_hist["epoch_time"]))
+
+print("\nLAB 3 - DEEP MLP")
+l3_deep = DeepMLP(width=128, dropout=0.3).to(l3_device)
+print("Parameters:", l3_count_params(l3_deep))
+l3_deep_hist = l3_train_model(
+    l3_deep, l3_train_loader, l3_val_loader, epochs=L3_EPOCHS
+)
+l3_deep_test = l3_evaluate(l3_deep, l3_test_loader)
+print("Deep Test Accuracy:", l3_deep_test)
+print("Deep Time/Epoch:", np.mean(l3_deep_hist["epoch_time"]))
+
+# Compare curves
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+axes[0].plot(l3_shallow_hist["val_loss"], marker="o", label="Shallow")
+axes[0].plot(l3_deep_hist["val_loss"], marker="o", label="Deep")
+axes[0].set_title("Validation Loss")
+axes[0].set_xlabel("Epoch")
+axes[0].legend()
+
+axes[1].plot(l3_shallow_hist["val_acc"], marker="o", label="Shallow")
+axes[1].plot(l3_deep_hist["val_acc"], marker="o", label="Deep")
+axes[1].set_title("Validation Accuracy")
+axes[1].set_xlabel("Epoch")
+axes[1].legend()
+plt.tight_layout()
+plt.show()
+
+# ---------------- LAB 3 TASK 5: HYPERPARAMETER TUNING ----------------
+l3_search_configs = [
+    {"lr": 0.001, "width": 128, "dropout": 0.3, "optimizer": "adam", "batch_size": 128},
+    {"lr": 0.001, "width": 256, "dropout": 0.3, "optimizer": "adam", "batch_size": 128},
+    {"lr": 0.001, "width": 512, "dropout": 0.5, "optimizer": "adam", "batch_size": 128},
+    {"lr": 0.01, "width": 128, "dropout": 0.3, "optimizer": "sgd", "batch_size": 128},
+    {"lr": 0.001, "width": 256, "dropout": 0.5, "optimizer": "adam", "batch_size": 256}
+]
+
+l3_best_val = -1
+l3_best_config = None
+l3_best_hist = None
+
+for cfg in l3_search_configs:
+    print("\nLAB 3 GRID CONFIG:", cfg)
+    t_loader = DataLoader(l3_train_set, batch_size=cfg["batch_size"], shuffle=True)
+    v_loader = DataLoader(l3_val_set, batch_size=cfg["batch_size"], shuffle=False)
+    m = DeepMLP(width=cfg["width"], dropout=cfg["dropout"]).to(l3_device)
+    h = l3_train_model(
+        m, t_loader, v_loader, epochs=5,
+        lr=cfg["lr"], optimizer_name=cfg["optimizer"]
+    )
+    val_acc = h["val_acc"][-1]
+    if val_acc > l3_best_val:
+        l3_best_val = val_acc
+        l3_best_config = cfg
+        l3_best_hist = h
+
+print("\nLAB 3 BEST CONFIG:", l3_best_config)
+print("LAB 3 BEST VALIDATION ACCURACY:", l3_best_val)
+
+
+# ============================================================
+# LAB 4 - CNN ON FASHION-MNIST (PYTORCH)
+# ============================================================
+
+# Baseline from the exercise: 3 convolution blocks, Adam, lr=1e-3.
+# Change only these values to perform the suggested experiments.
+L4_KERNEL_SIZE = 3
+L4_STRIDE = 1
+L4_PADDING = 1
+L4_NUM_CONV_BLOCKS = 3
+L4_OPTIMIZER = "adam"
+L4_LR = 1e-3
+L4_MOMENTUM = 0.9
+L4_BATCH_SIZE = 64
+L4_DROPOUT = 0.3
+L4_USE_BATCHNORM = True
+L4_AUGMENT = False
+L4_SCHEDULER = None
+L4_ACTIVATION = "relu"
+L4_EPOCHS = 5
+
+l4_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("\nLAB 4 DEVICE:", l4_device)
+
+l4_test_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.2860,), (0.3530,))
+])
+
+if L4_AUGMENT:
+    l4_train_transform = transforms.Compose([
+        transforms.RandomCrop(28, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.2860,), (0.3530,))
+    ])
+else:
+    l4_train_transform = l4_test_transform
+
+l4_train_full_aug = datasets.FashionMNIST(
+    root="./data", train=True, download=True, transform=l4_train_transform
+)
+l4_train_full_clean = datasets.FashionMNIST(
+    root="./data", train=True, download=True, transform=l4_test_transform
+)
+l4_test_set = datasets.FashionMNIST(
+    root="./data", train=False, download=True, transform=l4_test_transform
+)
+
+l4_train_subset, l4_val_subset = random_split(
+    range(len(l4_train_full_clean)),
+    [48000, 12000],
+    generator=torch.Generator().manual_seed(42)
+)
+l4_train_indices = list(l4_train_subset.indices)
+l4_val_indices = list(l4_val_subset.indices)
+
+from torch.utils.data import Subset
+l4_train_set = Subset(l4_train_full_aug, l4_train_indices)
+l4_val_set = Subset(l4_train_full_clean, l4_val_indices)
+
+l4_train_loader = DataLoader(l4_train_set, batch_size=L4_BATCH_SIZE, shuffle=True)
+l4_val_loader = DataLoader(l4_val_set, batch_size=L4_BATCH_SIZE, shuffle=False)
+l4_test_loader = DataLoader(l4_test_set, batch_size=L4_BATCH_SIZE, shuffle=False)
+
+
+def l4_activation():
+    if L4_ACTIVATION == "relu":
+        return nn.ReLU()
+    if L4_ACTIVATION == "leaky_relu":
+        return nn.LeakyReLU()
+    if L4_ACTIVATION == "sigmoid":
+        return nn.Sigmoid()
+    if L4_ACTIVATION == "tanh":
+        return nn.Tanh()
+    raise ValueError("Unsupported activation")
+
+
+class ConfigurableCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        blocks = []
+        in_channels = 1
+        channels = [16, 32, 64, 128, 256]
+
+        for i in range(L4_NUM_CONV_BLOCKS):
+            out_channels = channels[i]
+            blocks.append(
+                nn.Conv2d(
+                    in_channels,
+                    out_channels,
+                    kernel_size=L4_KERNEL_SIZE,
+                    stride=L4_STRIDE,
+                    padding=L4_PADDING
+                )
+            )
+            if L4_USE_BATCHNORM:
+                blocks.append(nn.BatchNorm2d(out_channels))
+            blocks.append(l4_activation())
+
+            # The exercise varies stride/kernel/padding. To keep the network
+            # valid for aggressive settings such as stride=2, pool only when
+            # the feature map can still be spatially downsampled.
+            blocks.append(nn.MaxPool2d(kernel_size=2, stride=2, ceil_mode=True))
+            in_channels = out_channels
+
+        self.features = nn.Sequential(*blocks)
+
+        with torch.no_grad():
+            dummy = torch.zeros(1, 1, 28, 28)
+            feature_output = self.features(dummy)
+            flat_size = feature_output.view(1, -1).shape[1]
+
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(flat_size, 128),
+            l4_activation(),
+            nn.Dropout(L4_DROPOUT),
+            nn.Linear(128, 10)
+        )
+
+    def forward(self, x):
+        return self.classifier(self.features(x))
+
+
+def l4_count_params(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def l4_run():
+    model = ConfigurableCNN().to(l4_device)
+    criterion = nn.CrossEntropyLoss()
+
+    if L4_OPTIMIZER == "adam":
+        optimizer = optim.Adam(model.parameters(), lr=L4_LR)
+    elif L4_OPTIMIZER == "sgd":
+        optimizer = optim.SGD(model.parameters(), lr=L4_LR, momentum=L4_MOMENTUM)
+    else:
+        raise ValueError("L4_OPTIMIZER must be 'adam' or 'sgd'")
+
+    scheduler = None
+    if L4_SCHEDULER == "cosine":
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=L4_EPOCHS)
+
+    train_losses, val_losses = [], []
+    train_accs, val_accs = [], []
+    epoch_times = []
+
+    for epoch in range(L4_EPOCHS):
+        start = time.time()
+        model.train()
+        loss_sum = 0.0
+        correct = 0
+        total = 0
+
+        for x, y in l4_train_loader:
+            x, y = x.to(l4_device), y.to(l4_device)
+            optimizer.zero_grad()
+            out = model(x)
+            loss = criterion(out, y)
+            loss.backward()
+            optimizer.step()
+            loss_sum += loss.item() * x.size(0)
+            correct += (out.argmax(1) == y).sum().item()
+            total += y.size(0)
+
+        train_loss = loss_sum / total
+        train_acc = correct / total
+
+        model.eval()
+        v_loss_sum = 0.0
+        v_correct = 0
+        v_total = 0
+        with torch.no_grad():
+            for x, y in l4_val_loader:
+                x, y = x.to(l4_device), y.to(l4_device)
+                out = model(x)
+                loss = criterion(out, y)
+                v_loss_sum += loss.item() * x.size(0)
+                v_correct += (out.argmax(1) == y).sum().item()
+                v_total += y.size(0)
+
+        val_loss = v_loss_sum / v_total
+        val_acc = v_correct / v_total
+
+        if scheduler is not None:
+            scheduler.step()
+
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        train_accs.append(train_acc)
+        val_accs.append(val_acc)
+        epoch_times.append(time.time() - start)
+
+        print(
+            f"Epoch [{epoch+1}/{L4_EPOCHS}] "
+            f"Train Loss: {train_loss:.4f} "
+            f"Train Acc: {train_acc:.4f} "
+            f"Val Loss: {val_loss:.4f} "
+            f"Val Acc: {val_acc:.4f}"
+        )
+
+    model.eval()
+    correct = 0
+    total = 0
+    test_loss = 0.0
+    with torch.no_grad():
+        for x, y in l4_test_loader:
+            x, y = x.to(l4_device), y.to(l4_device)
+            out = model(x)
+            loss = criterion(out, y)
+            test_loss += loss.item() * x.size(0)
+            correct += (out.argmax(1) == y).sum().item()
+            total += y.size(0)
+
+    return model, {
+        "train_loss": train_losses,
+        "val_loss": val_losses,
+        "train_acc": train_accs,
+        "val_acc": val_accs,
+        "test_accuracy": correct / total,
+        "test_loss": test_loss / total,
+        "time_per_epoch": np.mean(epoch_times),
+        "parameters": l4_count_params(model)
+    }
+
+
+print("\nLAB 4 - BASELINE")
+l4_model, l4_results = l4_run()
+print("Test Accuracy:", l4_results["test_accuracy"])
+print("Trainable Parameters:", l4_results["parameters"])
+print("Time/Epoch:", l4_results["time_per_epoch"])
+
+plt.figure(figsize=(8, 5))
+plt.plot(l4_results["train_loss"], marker="o", label="Train")
+plt.plot(l4_results["val_loss"], marker="o", label="Validation")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("Lab 4 Training/Validation Loss")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+plt.figure(figsize=(8, 5))
+plt.plot(l4_results["train_acc"], marker="o", label="Train")
+plt.plot(l4_results["val_acc"], marker="o", label="Validation")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("Lab 4 Training/Validation Accuracy")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# For the suggested experiments, change the L4_* values above and rerun
+# the LAB 4 section. Required settings are:
+# kernel_size=5, stride=2, padding=0, num_conv_blocks=5,
+# optimizer='sgd', lr=0.01, momentum=0.9, batch_size=32/256,
+# dropout=0.5, batchnorm=False, augment=True, scheduler='cosine',
+# activation='leaky_relu'.
+
+
+# ============================================================
+# LAB 5 - CIFAR-10 MOBILE-NET V2 FROM SCRATCH
+# (the MobileNetV2 exercise you supplied earlier)
+# ============================================================
+
+l5_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+L5_BATCH_SIZE = 64
+L5_EPOCHS = 5
+
+l5_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
+
+l5_full_train = datasets.CIFAR10(
+    root="./data", train=True, download=True, transform=l5_transform
+)
+l5_test_set = datasets.CIFAR10(
+    root="./data", train=False, download=True, transform=l5_transform
+)
+
+l5_val_size = int(0.2 * len(l5_full_train))
+l5_train_size = len(l5_full_train) - l5_val_size
+l5_train_set, l5_val_set = random_split(
+    l5_full_train,
+    [l5_train_size, l5_val_size],
+    generator=torch.Generator().manual_seed(42)
+)
+
+l5_train_loader = DataLoader(l5_train_set, batch_size=L5_BATCH_SIZE, shuffle=True)
+l5_val_loader = DataLoader(l5_val_set, batch_size=L5_BATCH_SIZE, shuffle=False)
+l5_test_loader = DataLoader(l5_test_set, batch_size=L5_BATCH_SIZE, shuffle=False)
+
+l5_model = torchvision.models.mobilenet_v2(weights=None)
+l5_model.classifier = nn.Sequential(
+    nn.Flatten(),
+    nn.Linear(1280, 128),
+    nn.ReLU(),
+    nn.Linear(128, 10)
+)
+l5_model = l5_model.to(l5_device)
+
+l5_criterion = nn.CrossEntropyLoss()
+l5_optimizer = optim.Adam(l5_model.parameters(), lr=1e-3)
+
+l5_train_accs = []
+l5_val_accs = []
+l5_train_losses = []
+
+for epoch in range(L5_EPOCHS):
+    l5_model.train()
+    running_loss = 0.0
+    correct = 0
+    total = 0
+
+    for x, y in l5_train_loader:
+        x, y = x.to(l5_device), y.to(l5_device)
+        l5_optimizer.zero_grad()
+        out = l5_model(x)
+        loss = l5_criterion(out, y)
+        loss.backward()
+        l5_optimizer.step()
+
+        running_loss += loss.item() * x.size(0)
+        correct += (out.argmax(1) == y).sum().item()
+        total += y.size(0)
+
+    train_loss = running_loss / total
+    train_acc = correct / total
+
+    l5_model.eval()
+    val_correct = 0
+    val_total = 0
+    with torch.no_grad():
+        for x, y in l5_val_loader:
+            x, y = x.to(l5_device), y.to(l5_device)
+            val_correct += (l5_model(x).argmax(1) == y).sum().item()
+            val_total += y.size(0)
+
+    val_acc = val_correct / val_total
+    l5_train_losses.append(train_loss)
+    l5_train_accs.append(train_acc)
+    l5_val_accs.append(val_acc)
+
+    print(
+        f"Lab 5 Epoch [{epoch+1}/{L5_EPOCHS}] "
+        f"Loss: {train_loss:.4f} "
+        f"Train Acc: {train_acc:.4f} "
+        f"Val Acc: {val_acc:.4f}"
+    )
+
+l5_model.eval()
+l5_correct = 0
+l5_total = 0
+with torch.no_grad():
+    for x, y in l5_test_loader:
+        x, y = x.to(l5_device), y.to(l5_device)
+        l5_correct += (l5_model(x).argmax(1) == y).sum().item()
+        l5_total += y.size(0)
+
+l5_test_accuracy = l5_correct / l5_total
+print("Lab 5 Test Accuracy:", l5_test_accuracy)
+
+plt.figure(figsize=(8, 5))
+plt.plot(l5_train_accs, marker="o", label="Training Accuracy")
+plt.plot(l5_val_accs, marker="o", label="Validation Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("Lab 5 Training vs Validation Accuracy")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+# ============================================================
+# LAB 5b - TRANSFER LEARNING ON MNIST
+# AlexNet / VGG16 / ResNet18 / ResNet50
+# ============================================================
+
+l5b_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+L5B_EPOCHS = 3
+L5B_BATCH_SIZE = 64
+L5B_LR_HEAD = 1e-3
+L5B_LR_BACKBONE = 1e-5
+
+l5b_transform = transforms.Compose([
+    transforms.Grayscale(num_output_channels=3),
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(
+        [0.485, 0.456, 0.406],
+        [0.229, 0.224, 0.225]
+    )
+])
+
+l5b_full_train = datasets.MNIST(
+    root="./data", train=True, download=True, transform=l5b_transform
+)
+l5b_test_set = datasets.MNIST(
+    root="./data", train=False, download=True, transform=l5b_transform
+)
+
+l5b_train_set, l5b_val_set = random_split(
+    l5b_full_train,
+    [54000, 6000],
+    generator=torch.Generator().manual_seed(42)
+)
+
+
+def l5b_loaders(batch_size=64):
+    return (
+        DataLoader(l5b_train_set, batch_size=batch_size, shuffle=True),
+        DataLoader(l5b_val_set, batch_size=batch_size, shuffle=False),
+        DataLoader(l5b_test_set, batch_size=batch_size, shuffle=False)
+    )
+
+
+def l5b_create_model(name, pretrained=True):
+    if name == "alexnet":
+        weights = models.AlexNet_Weights.DEFAULT if pretrained else None
+        model = models.alexnet(weights=weights)
+        model.classifier[6] = nn.Linear(model.classifier[6].in_features, 10)
+    elif name == "vgg16":
+        weights = models.VGG16_Weights.DEFAULT if pretrained else None
+        model = models.vgg16(weights=weights)
+        model.classifier[6] = nn.Linear(model.classifier[6].in_features, 10)
+    elif name == "resnet18":
+        weights = models.ResNet18_Weights.DEFAULT if pretrained else None
+        model = models.resnet18(weights=weights)
+        model.fc = nn.Linear(model.fc.in_features, 10)
+    elif name == "resnet50":
+        weights = models.ResNet50_Weights.DEFAULT if pretrained else None
+        model = models.resnet50(weights=weights)
+        model.fc = nn.Linear(model.fc.in_features, 10)
+    else:
+        raise ValueError("Use alexnet, vgg16, resnet18 or resnet50")
+    return model.to(l5b_device)
+
+
+def l5b_freeze_feature_extraction(model, name):
+    for p in model.parameters():
+        p.requires_grad = False
+
+    if name in ["alexnet", "vgg16"]:
+        for p in model.classifier[6].parameters():
+            p.requires_grad = True
+    else:
+        for p in model.fc.parameters():
+            p.requires_grad = True
+
+
+def l5b_unfreeze_all(model):
+    for p in model.parameters():
+        p.requires_grad = True
+
+
+def l5b_partial_unfreeze_resnet(model, n):
+    for p in model.parameters():
+        p.requires_grad = False
+
+    for p in model.fc.parameters():
+        p.requires_grad = True
+
+    if n == "all":
+        l5b_unfreeze_all(model)
+        return
+
+    children = list(model.children())
+    for module in children[-n:]:
+        for p in module.parameters():
+            p.requires_grad = True
+
+
+def l5b_count_params(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def l5b_train(model, train_loader, val_loader, test_loader,
+              optimizer, epochs=3):
+    criterion = nn.CrossEntropyLoss()
+    train_losses = []
+    val_accs = []
+    epoch_times = []
+
+    for epoch in range(epochs):
+        start = time.time()
+        model.train()
+        loss_sum = 0.0
+        correct = 0
+        total = 0
+
+        for x, y in train_loader:
+            x, y = x.to(l5b_device), y.to(l5b_device)
+            optimizer.zero_grad()
+            out = model(x)
+            loss = criterion(out, y)
+            loss.backward()
+            optimizer.step()
+            loss_sum += loss.item() * x.size(0)
+            correct += (out.argmax(1) == y).sum().item()
+            total += y.size(0)
+
+        model.eval()
+        vcorrect = 0
+        vtotal = 0
+        with torch.no_grad():
+            for x, y in val_loader:
+                x, y = x.to(l5b_device), y.to(l5b_device)
+                vcorrect += (model(x).argmax(1) == y).sum().item()
+                vtotal += y.size(0)
+
+        train_loss = loss_sum / total
+        val_acc = vcorrect / vtotal
+        train_losses.append(train_loss)
+        val_accs.append(val_acc)
+        epoch_times.append(time.time() - start)
+
+        print(
+            f"Epoch [{epoch+1}/{epochs}] "
+            f"Loss: {train_loss:.4f} "
+            f"Train Acc: {correct/total:.4f} "
+            f"Val Acc: {val_acc:.4f}"
+        )
+
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for x, y in test_loader:
+            x, y = x.to(l5b_device), y.to(l5b_device)
+            correct += (model(x).argmax(1) == y).sum().item()
+            total += y.size(0)
+
+    return {
+        "train_loss": train_losses,
+        "val_acc": val_accs,
+        "test_accuracy": correct / total,
+        "parameters": l5b_count_params(model),
+        "time_per_epoch": np.mean(epoch_times)
+    }
+
+
+def l5b_run_feature_extraction(name, batch_size=64):
+    train_loader, val_loader, test_loader = l5b_loaders(batch_size)
+    model = l5b_create_model(name, pretrained=True)
+    l5b_freeze_feature_extraction(model, name)
+    optimizer = optim.Adam(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=L5B_LR_HEAD
+    )
+    return l5b_train(
+        model, train_loader, val_loader, test_loader,
+        optimizer, L5B_EPOCHS
+    )
+
+
+# ---------------- 5b EXPERIMENT 1 ----------------
+# Feature extraction: AlexNet vs VGG16 vs ResNet18
+l5b_exp1 = {}
+for name in ["alexnet", "vgg16", "resnet18"]:
+    print("\nLAB 5b FEATURE EXTRACTION:", name)
+    l5b_exp1[name] = l5b_run_feature_extraction(name)
+    print(l5b_exp1[name])
+
+# Plot
+plt.figure(figsize=(9, 5))
+for name, r in l5b_exp1.items():
+    plt.plot(r["train_loss"], marker="o", label=name)
+plt.xlabel("Epoch")
+plt.ylabel("Training Loss")
+plt.title("5b Feature Extraction")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# ---------------- 5b EXPERIMENT 2 ----------------
+# Feature extraction vs full fine-tuning using ResNet18
+l5b_exp2 = {}
+train_loader, val_loader, test_loader = l5b_loaders(L5B_BATCH_SIZE)
+
+print("\nLAB 5b RESNET18 FEATURE EXTRACTION")
+model = l5b_create_model("resnet18", pretrained=True)
+l5b_freeze_feature_extraction(model, "resnet18")
+optimizer = optim.Adam(
+    filter(lambda p: p.requires_grad, model.parameters()),
+    lr=L5B_LR_HEAD
+)
+l5b_exp2["Feature Extraction"] = l5b_train(
+    model, train_loader, val_loader, test_loader,
+    optimizer, L5B_EPOCHS
+)
+
+print("\nLAB 5b RESNET18 FULL FINE-TUNING")
+model = l5b_create_model("resnet18", pretrained=True)
+l5b_unfreeze_all(model)
+optimizer = optim.Adam([
+    {"params": [p for n, p in model.named_parameters() if not n.startswith("fc.")],
+     "lr": L5B_LR_BACKBONE},
+    {"params": model.fc.parameters(), "lr": L5B_LR_HEAD}
+])
+l5b_exp2["Full Fine-Tuning"] = l5b_train(
+    model, train_loader, val_loader, test_loader,
+    optimizer, L5B_EPOCHS
+)
+
+# ---------------- 5b EXPERIMENT 3 ----------------
+# Partial fine-tuning depth: 0, 1, 2, all
+l5b_exp3 = {}
+for n in [0, 1, 2, "all"]:
+    print("\nLAB 5b PARTIAL FINE-TUNING:", n)
+    model = l5b_create_model("resnet18", pretrained=True)
+    if n == 0:
+        l5b_freeze_feature_extraction(model, "resnet18")
+    else:
+        l5b_partial_unfreeze_resnet(model, n)
+
+    optimizer = optim.Adam(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=L5B_LR_BACKBONE
+    )
+    l5b_exp3[str(n)] = l5b_train(
+        model, train_loader, val_loader, test_loader,
+        optimizer, L5B_EPOCHS
+    )
+
+# ---------------- 5b EXPERIMENT 4 ----------------
+# Differential learning rate: 1e-5 vs 1e-3
+l5b_exp4 = {}
+for backbone_lr in [1e-5, 1e-3]:
+    print("\nLAB 5b BACKBONE LR:", backbone_lr)
+    model = l5b_create_model("resnet18", pretrained=True)
+    l5b_unfreeze_all(model)
+
+    backbone_params = [
+        p for n, p in model.named_parameters()
+        if not n.startswith("fc.")
+    ]
+    head_params = list(model.fc.parameters())
+
+    optimizer = optim.Adam([
+        {"params": backbone_params, "lr": backbone_lr},
+        {"params": head_params, "lr": L5B_LR_HEAD}
+    ])
+
+    l5b_exp4[str(backbone_lr)] = l5b_train(
+        model, train_loader, val_loader, test_loader,
+        optimizer, L5B_EPOCHS
+    )
+
+# ---------------- 5b EXPERIMENT 5 ----------------
+# Batch size: 32 vs 128
+l5b_exp5 = {}
+for bs in [32, 128]:
+    print("\nLAB 5b BATCH SIZE:", bs)
+    tr, va, te = l5b_loaders(bs)
+    model = l5b_create_model("resnet18", pretrained=True)
+    l5b_freeze_feature_extraction(model, "resnet18")
+    optimizer = optim.Adam(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=L5B_LR_HEAD
+    )
+    l5b_exp5[str(bs)] = l5b_train(
+        model, tr, va, te,
+        optimizer, L5B_EPOCHS
+    )
+
+# ---------------- 5b RESULTS ----------------
+print("\nLAB 5b - EXPERIMENT 1 RESULTS")
+for name, r in l5b_exp1.items():
+    print(
+        name,
+        "Test Accuracy =", r["test_accuracy"],
+        "Parameters =", r["parameters"],
+        "Time/Epoch =", r["time_per_epoch"]
+    )
+
+print("\nLAB 5b - EXPERIMENT 2 RESULTS")
+for name, r in l5b_exp2.items():
+    print(
+        name,
+        "Test Accuracy =", r["test_accuracy"],
+        "Parameters =", r["parameters"],
+        "Time/Epoch =", r["time_per_epoch"]
+    )
+
+print("\nLAB 5b - EXPERIMENT 3 RESULTS")
+for name, r in l5b_exp3.items():
+    print(
+        "Unfreeze", name,
+        "Test Accuracy =", r["test_accuracy"],
+        "Parameters =", r["parameters"],
+        "Time/Epoch =", r["time_per_epoch"]
+    )
+
+print("\nLAB 5b - EXPERIMENT 4 RESULTS")
+for name, r in l5b_exp4.items():
+    print(
+        "Backbone LR", name,
+        "Test Accuracy =", r["test_accuracy"],
+        "Parameters =", r["parameters"],
+        "Time/Epoch =", r["time_per_epoch"]
+    )
+
+print("\nLAB 5b - EXPERIMENT 5 RESULTS")
+for name, r in l5b_exp5.items():
+    print(
+        "Batch Size", name,
+        "Test Accuracy =", r["test_accuracy"],
+        "Parameters =", r["parameters"],
+        "Time/Epoch =", r["time_per_epoch"]
+    )
+
+# ============================================================
+# END
+# ============================================================
