@@ -1,3 +1,6 @@
+#INSTALL DEPENDENCIES:
+# pip install tensorflow torch torchvision numpy matplotlib pandas jupyter
+
 # ============================================================
 # DEEP LEARNING LABS 2, 3, 4, 5 and 5b
 # Jupyter-ready single Python file
