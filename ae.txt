@@ -1,37 +1,92 @@
-pip install numpy tensorflow scikit-learn
 
+# Install the required libraries before running the program
+# pip install numpy tensorflow scikit-learn
 
+# Import NumPy for numerical operations and array manipulation
 import numpy as np
+
+# Import the IMDB movie review sentiment dataset
 from tensorflow.keras.datasets import imdb
+
+# Import pad_sequences to make all review sequences the same length
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+# Import Model to create neural network models
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input,Dense
 
-from sklearn.metrics import accuracy_score,classification_report
+# Import Input and Dense layers for building the autoencoder and classifier
+from tensorflow.keras.layers import Input, Dense
 
-vocab_size=10000
-max_len=200
+# Import evaluation metrics to measure classification performance
+from sklearn.metrics import accuracy_score, classification_report
 
-(x_train,y_train),(x_test,y_test)=imdb.load_data(num_words=10000)
 
-x_train=pad_sequences(x_train,max_len)
-x_test=pad_sequences(x_test,max_len)
+# Set the maximum number of words to consider in the vocabulary
+vocab_size = 10000
 
-x_train=x_train.astype("float32")
-x_test=x_test.astype("float32")
+# Set the maximum length of each review to 200 words
+max_len = 200
 
-input=Input(shape=(max_len,))
+
+# Load the IMDB dataset, which contains movie reviews and sentiment labels
+# Training data is used to train the models
+# Testing data is used to evaluate the final predictions
+(x_train, y_train), (x_test, y_test) = imdb.load_data(num_words=10000)
+
+
+# Make all reviews have the same length of 200
+# Short reviews are padded with zeros
+# Long reviews are truncated
+x_train = pad_sequences(x_train, max_len)
+x_test = pad_sequences(x_test, max_len)
+
+
+# Convert the review sequences to float32 data type
+x_train = x_train.astype("float32")
+x_test = x_test.astype("float32")
+
+
+# ---------------------------------------------------------
+# BUILD THE AUTOENCODER
+# ---------------------------------------------------------
+
+# Define the input layer with 200 features for each review
+input = Input(shape=(max_len,))
+
+# Encoder: transform the input into 128 features
 encoded = Dense(128, activation="relu")(input)
+
+# Reduce the representation from 128 features to 64
 encoded = Dense(64, activation="relu")(encoded)
+
+# Compress the representation further into 32 features
+# This is the compact encoded representation of each review
 encoded = Dense(32, activation="relu")(encoded)
 
+
+# Decoder: reconstruct the encoded representation into 64 features
 decoded = Dense(64, activation="relu")(encoded)
+
+# Expand the representation from 64 features to 128
 decoded = Dense(128, activation="relu")(decoded)
+
+# Reconstruct the original input as 200 output values
+# Sigmoid produces output values between 0 and 1
 decoded = Dense(200, activation="sigmoid")(decoded)
 
-autoencoder=Model(input,decoded)
-autoencoder.compile(optimizer="adam",loss="mse")
 
+# Create the autoencoder using the input and reconstructed output
+autoencoder = Model(input, decoded)
+
+# Configure the model with Adam optimizer and mean squared error loss
+# MSE measures the difference between the input and reconstructed output
+autoencoder.compile(optimizer="adam", loss="mse")
+
+
+# Train the autoencoder to reconstruct its own input
+# x_train is used as both input and target output
+# Train for 5 epochs with a batch size of 128
+# validation_split=0.2 reserves 20% of training data for validation
 autoencoder.fit(
     x_train,
     x_train,
@@ -40,33 +95,78 @@ autoencoder.fit(
     validation_split=0.2
 )
 
-encoder=Model(input,encoded)
-x_train=encoder.predict(x_train)
-x_test=encoder.predict(x_test)
+
+# ---------------------------------------------------------
+# EXTRACT FEATURES USING THE ENCODER
+# ---------------------------------------------------------
+
+# Create a separate model that outputs the 32-dimensional encoded features
+encoder = Model(input, encoded)
+
+# Transform the original training reviews into compact representations
+x_train = encoder.predict(x_train)
+
+# Transform the testing reviews using the same trained encoder
+x_test = encoder.predict(x_test)
 
 
-i=Input(shape=(32,))
-h=Dense(16,activation="relu")(i)
-out=Dense(1,activation="sigmoid")(h)
+# ---------------------------------------------------------
+# BUILD THE SENTIMENT CLASSIFICATION MODEL
+# ---------------------------------------------------------
+
+# Define an input layer that accepts 32 encoded features
+i = Input(shape=(32,))
+
+# Hidden layer with 16 neurons and ReLU activation
+h = Dense(16, activation="relu")(i)
+
+# Output layer with one neuron and sigmoid activation
+# The output represents the estimated probability of positive sentiment
+out = Dense(1, activation="sigmoid")(h)
 
 
-classifier=Model(i,out)
+# Create the classification model using the input and output layers
+classifier = Model(i, out)
+
+# Compile the classifier
+# Adam optimizer updates the model weights
+# Binary cross-entropy is suitable for binary classification
+# Accuracy measures the proportion of correct predictions
 classifier.compile(
     optimizer="Adam",
     loss="binary_crossentropy",
     metrics=["accuracy"]
 )
 
+
+# Train the classifier using the encoded training features and sentiment labels
+# Train for 5 epochs with a batch size of 128
 classifier.fit(
-    x_train,y_train,
+    x_train, y_train,
     epochs=5,
     batch_size=128
 )
 
-prob=classifier.predict(x_test)
-pred=(prob>0.5).astype(int).ravel()
+
+# ---------------------------------------------------------
+# PREDICTION AND MODEL EVALUATION
+# ---------------------------------------------------------
+
+# Predict sentiment probabilities for the encoded test reviews
+prob = classifier.predict(x_test)
+
+# Convert probabilities into binary class predictions
+# Probability greater than 0.5 is classified as 1 (positive)
+# Otherwise, it is classified as 0 (negative)
+# astype(int) converts Boolean results into integers
+# ravel() converts the output into a one-dimensional array
+pred = (prob > 0.5).astype(int).ravel()
 
 
-print("Accuracy score:", accuracy_score(y_test,pred))
-print("Classification report:", classification_report(y_test,pred))
+# Calculate and print the accuracy of the predictions
+# Accuracy is the fraction of predictions that are correct
+print("Accuracy score:", accuracy_score(y_test, pred))
 
+# Print the classification report
+# It contains precision, recall, F1-score, and support for each class
+print("Classification report:", classification_report(y_test, pred))
