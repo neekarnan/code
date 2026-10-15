@@ -1,153 +1,97 @@
+pip install numpy pandas matplotlib tensorflow scikit-learn
 
-# Install the required libraries before running the program
-# pip install numpy pandas matplotlib tensorflow scikit-learn
 
-# Import NumPy for numerical operations and array handling
+# 1. Import Libraries and Load Dataset
+
 import numpy as np
-
-# Import Pandas to read and manipulate the dataset
 import pandas as pd
-
-# Import Matplotlib for plotting graphs
 import matplotlib.pyplot as plt
-
-# Import get_file to download and cache the dataset
 from tensorflow.keras.utils import get_file
-
-# Import Sequential to build a neural network layer by layer
 from tensorflow.keras.models import Sequential
-
-# Import SimpleRNN, LSTM, and GRU recurrent neural network layers
-from tensorflow.keras.layers import SimpleRNN, LSTM, GRU, Dense
-
-# Import MinMaxScaler to normalize data between 0 and 1
+from tensorflow.keras.layers import Input, SimpleRNN, LSTM, GRU, Dense
 from sklearn.preprocessing import MinMaxScaler
-
-# Import mean_squared_error to calculate prediction error
 from sklearn.metrics import mean_squared_error
 
-
-# URL of the monthly international airline passenger dataset
 DATA_URL = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/airline-passengers.csv"
-
-# Download the dataset if it is not already available locally
 csv_path = get_file("airline-passengers.csv", origin=DATA_URL)
 
-# Load the CSV file into a Pandas DataFrame
 df = pd.read_csv(csv_path)
-
-# Extract the passenger-count column, convert it to float32,
-# and reshape it into a 2D array with one column
 series = df.iloc[:, 1].values.astype("float32").reshape(-1, 1)
 
-# Display the shape of the dataset and its first five rows
 print("Dataset shape:", series.shape)
 print(df.head())
 
 
-# Plot the original passenger time series
+# 2. Visualize Original Time Series
+
 plt.figure(figsize=(10, 4))
 plt.plot(series)
 plt.title("International Airline Passengers (1949-1960)")
 plt.xlabel("Month")
 plt.ylabel("Passengers (thousands)")
 plt.tight_layout()
-
-# Save the original time-series graph as an image
 plt.savefig("raw_series.png")
+plt.show()
 plt.close()
 
 
-# Create a scaler to normalize passenger values between 0 and 1
-scaler = MinMaxScaler(feature_range=(0, 1))
+# 3. Data Preprocessing and Sequence Creation
 
-# Fit the scaler to the data and transform the values
+scaler = MinMaxScaler(feature_range=(0, 1))
 scaled = scaler.fit_transform(series)
 
-
-# Use the previous 12 months to predict the next month's passenger count
 LOOK_BACK = 12
 
-
-# Function to convert a time series into input-output sequences
 def create_dataset(data, look_back=1):
     X, y = [], []
-
-    # Slide a window across the data to create training examples
     for i in range(len(data) - look_back):
-
-        # Store the previous 'look_back' values as input features
-        # 0 selects the first column of the data
         X.append(data[i:i + look_back, 0])
-
-        # Store the next value as the target to predict
         y.append(data[i + look_back, 0])
-
-    # Convert the input and target lists into NumPy arrays
     return np.array(X), np.array(y)
 
-
-# Create input sequences and their corresponding target values
 X, y = create_dataset(scaled, LOOK_BACK)
 
-
-# Use the first 80% of sequences for training
-# Use the remaining 20% for testing
 split = int(len(X) * 0.8)
 X_train, X_test = X[:split], X[split:]
 y_train, y_test = y[:split], y[split:]
 
-
-# Reshape the training inputs into the 3D format required by RNN layers:
-# (number of samples, number of time steps, number of features)
 X_train = X_train.reshape((X_train.shape[0], LOOK_BACK, 1))
 X_test = X_test.reshape((X_test.shape[0], LOOK_BACK, 1))
 
-# Display the shapes of the training and testing data
 print("Train shape:", X_train.shape, "Test shape:", X_test.shape)
 
 
-# Function to train a model and evaluate its forecasting performance
-def train_and_evaluate(model, name, epochs=100):
+# 4. Model Training and Evaluation Function
 
-    # Configure the model using Adam optimizer and mean squared error loss
+def train_and_evaluate(model, name, epochs=100):
     model.compile(optimizer="adam", loss="mse")
 
-    # Train the model using the training data
-    # Validation data is used to monitor performance during training
     history = model.fit(
-        X_train, y_train,
+        X_train,
+        y_train,
         validation_data=(X_test, y_test),
-        epochs=epochs, batch_size=8, verbose=0
+        epochs=epochs,
+        batch_size=8,
+        verbose=0
     )
 
-    # Generate predictions for the training and testing datasets
     train_pred = model.predict(X_train, verbose=0)
     test_pred = model.predict(X_test, verbose=0)
 
-    # Convert normalized predictions back to original passenger counts
     train_pred_inv = scaler.inverse_transform(train_pred)
-
-    # Convert normalized training target values back to original scale
     y_train_inv = scaler.inverse_transform(y_train.reshape(-1, 1))
 
-    # Convert normalized testing predictions back to original scale
     test_pred_inv = scaler.inverse_transform(test_pred)
-
-    # Convert normalized testing target values back to original scale
     y_test_inv = scaler.inverse_transform(y_test.reshape(-1, 1))
 
-    # Calculate training RMSE (Root Mean Squared Error)
     train_rmse = np.sqrt(mean_squared_error(y_train_inv, train_pred_inv))
-
-    # Calculate testing RMSE to measure forecasting error on unseen data
     test_rmse = np.sqrt(mean_squared_error(y_test_inv, test_pred_inv))
 
-    # Display the model name and its training/testing RMSE
-    print(f"\n[{name}] Train RMSE: {train_rmse:.2f} | Test RMSE: {test_rmse:.2f}")
+    print(
+        f"\n[{name}] Train RMSE: {train_rmse:.2f} "
+        f"| Test RMSE: {test_rmse:.2f}"
+    )
 
-
-    # Plot training loss and validation loss across epochs
     plt.figure(figsize=(6, 4))
     plt.plot(history.history["loss"], label="train loss")
     plt.plot(history.history["val_loss"], label="val loss")
@@ -156,98 +100,74 @@ def train_and_evaluate(model, name, epochs=100):
     plt.ylabel("MSE")
     plt.legend()
     plt.tight_layout()
-
-    # Save the loss curve using the model name in lowercase
     plt.savefig(f"{name.lower()}_loss.png")
+    plt.show()
     plt.close()
 
-    # Return predictions, actual testing values, and testing RMSE
     return test_pred_inv, y_test_inv, test_rmse
 
 
-# ---------------------------------------------------------
-# MODEL 1: Simple Recurrent Neural Network (SimpleRNN)
-# ---------------------------------------------------------
+# 5. Build and Train SimpleRNN Model
 
-# Create a neural network with:
-# SimpleRNN layer containing 50 recurrent units
-# Dense layer containing one output neuron for prediction
 rnn_model = Sequential([
-    SimpleRNN(50, activation="tanh", input_shape=(LOOK_BACK, 1)),
+    Input(shape=(LOOK_BACK, 1)),
+    SimpleRNN(50, activation="tanh"),
     Dense(1)
 ])
 
-# Train the SimpleRNN model and evaluate its performance
-rnn_pred, y_test_inv, rnn_rmse = train_and_evaluate(rnn_model, "SimpleRNN")
+rnn_pred, y_test_inv, rnn_rmse = train_and_evaluate(
+    rnn_model, "SimpleRNN"
+)
 
 
-# ---------------------------------------------------------
-# MODEL 2: Long Short-Term Memory Network (LSTM)
-# ---------------------------------------------------------
+# 6. Build and Train LSTM Model
 
-# Create an LSTM network with 50 units and one output neuron
-# LSTM uses memory cells and gates to learn long-term dependencies
 lstm_model = Sequential([
-    LSTM(50, activation="tanh", input_shape=(LOOK_BACK, 1)),
+    Input(shape=(LOOK_BACK, 1)),
+    LSTM(50, activation="tanh"),
     Dense(1)
 ])
 
-# Train the LSTM model and evaluate its performance
-lstm_pred, _, lstm_rmse = train_and_evaluate(lstm_model, "LSTM")
+lstm_pred, _, lstm_rmse = train_and_evaluate(
+    lstm_model, "LSTM"
+)
 
 
-# ---------------------------------------------------------
-# MODEL 3: Gated Recurrent Unit Network (GRU)
-# ---------------------------------------------------------
+# 7. Build and Train GRU Model
 
-# Create a GRU network with 50 units and one output neuron
-# GRU uses update and reset gates to control information flow
 gru_model = Sequential([
-    GRU(50, activation="tanh", input_shape=(LOOK_BACK, 1)),
+    Input(shape=(LOOK_BACK, 1)),
+    GRU(50, activation="tanh"),
     Dense(1)
 ])
 
-# Train the GRU model and evaluate its performance
-gru_pred, _, gru_rmse = train_and_evaluate(gru_model, "GRU")
+gru_pred, _, gru_rmse = train_and_evaluate(
+    gru_model, "GRU"
+)
 
 
-# ---------------------------------------------------------
-# COMPARE THE FORECASTS OF ALL THREE MODELS
-# ---------------------------------------------------------
+# 8. Compare Predictions and Display Final Results
 
-# Create a graph to compare actual passenger counts with predictions
 plt.figure(figsize=(10, 5))
-
-# Plot the actual passenger counts in the test dataset
 plt.plot(y_test_inv, label="Actual", linewidth=2)
-
-# Plot predictions made by the SimpleRNN model
 plt.plot(rnn_pred, label=f"SimpleRNN (RMSE={rnn_rmse:.1f})")
-
-# Plot predictions made by the LSTM model
 plt.plot(lstm_pred, label=f"LSTM (RMSE={lstm_rmse:.1f})")
-
-# Plot predictions made by the GRU model
 plt.plot(gru_pred, label=f"GRU (RMSE={gru_rmse:.1f})")
-
-# Add the graph title and axis labels
 plt.title("Airline Passengers Forecast: RNN vs LSTM vs GRU")
 plt.xlabel("Time step (test set)")
 plt.ylabel("Passengers (thousands)")
-
-# Display the legend for identifying each line
 plt.legend()
 plt.tight_layout()
-
-# Save the final comparison graph
 plt.savefig("rnn_vs_lstm_forecast.png")
+plt.show()
 plt.close()
 
+print(
+    "\nSaved plots: raw_series.png, simplernn_loss.png, "
+    "lstm_loss.png, gru_loss.png, rnn_vs_lstm_forecast.png"
+)
 
-# Display the names of all graph files saved by the program
-print("\nSaved plots: raw_series.png, simplernn_loss.png, lstm_loss.png, "
-      "gru_loss.png, rnn_vs_lstm_forecast.png")
-
-# Print the final testing RMSE values for all three models
-# A lower RMSE generally indicates more accurate predictions
-print(f"\nSummary -> SimpleRNN: {rnn_rmse:.2f} | LSTM: {lstm_rmse:.2f} | GRU: {gru_rmse:.2f}")
+print(
+    f"\nSummary -> SimpleRNN: {rnn_rmse:.2f} | "
+    f"LSTM: {lstm_rmse:.2f} | GRU: {gru_rmse:.2f}"
+)
