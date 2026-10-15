@@ -1,0 +1,75 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.models import Model
+
+
+(x_train, _), (x_test, _) = tf.keras.datasets.mnist.load_data()
+
+
+x_train = x_train.astype("float32").reshape(-1, 784) / 255.0
+x_test = x_test.astype("float32").reshape(-1, 784) / 255.0
+
+
+input_img = Input(shape=(784,))
+
+
+encoded = Dense(128, activation="relu")(input_img)
+encoded = Dense(32, activation="relu")(encoded)
+
+
+decoded = Dense(128, activation="relu")(encoded)
+decoded = Dense(784, activation="sigmoid")(decoded)
+
+autoencoder = Model(input_img, decoded)
+
+
+autoencoder.compile(
+    optimizer="adam",
+    loss="binary_crossentropy"
+)
+
+
+history = autoencoder.fit(
+    x_train, x_train,
+    epochs=5,
+    batch_size=256,
+    validation_data=(x_test, x_test)
+)
+
+
+reconstructed = autoencoder.predict(x_test[:10], verbose=0)
+
+
+plt.figure(figsize=(12, 5))
+
+for i in range(10):
+
+    plt.subplot(2, 10, i + 1)
+    plt.imshow(x_test[i].reshape(28, 28), cmap="gray")
+    plt.title("Original")
+    plt.axis("off")
+
+
+    plt.subplot(2, 10, i + 11)
+    plt.imshow(reconstructed[i].reshape(28, 28), cmap="gray")
+    plt.title("Reconstructed")
+    plt.axis("off")
+
+plt.tight_layout()
+plt.show()
+
+
+plt.figure(figsize=(7, 4))
+plt.plot(history.history["loss"], label="Training Loss")
+plt.plot(history.history["val_loss"], label="Validation Loss")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("Autoencoder Training Loss")
+plt.legend()
+plt.show()
+
+print("Autoencoder training and reconstruction completed!")
+print("Original shape:", x_test[:10].shape)
+print("Reconstructed shape:", reconstructed.shape)
