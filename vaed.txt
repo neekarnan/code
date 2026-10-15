@@ -1,0 +1,171 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras import layers, Model
+
+# 1. Load MNIST dataset
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+
+# 2. Normalize and flatten images
+x_train = x_train.astype("float32").reshape(-1, 784) / 255.0
+x_test = x_test.astype("float32").reshape(-1, 784) / 255.0
+
+latent_dim = 2
+
+# 3. Encoder
+inputs = layers.Input(shape=(784,))
+h = layers.Dense(128, activation="relu")(inputs)
+
+z_mean = layers.Dense(latent_dim)(h)
+z_log_var = layers.Dense(latent_dim)(h)
+
+# 4. Sampling
+def sampling(args):
+    mean, log_var = args
+    epsilon = tf.random.normal(shape=tf.shape(mean))
+    return mean + tf.exp(0.5 * log_var) * epsilon
+
+z = layers.Lambda(sampling)([z_mean, z_log_var])
+encoder = Model(inputs, [z_mean, z_log_var, z])
+
+# 5. Decoder
+latent_input = layers.Input(shape=(latent_dim,))
+h_decoded = layers.Dense(128, activation="relu")(latent_input)
+outputs = layers.Dense(784, activation="sigmoid")(h_decoded)
+
+decoder = Model(latent_input, outputs)
+
+# 6. VAE model
+class VAE(Model):
+
+    def __init__(self, encoder, decoder):
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+
+        self.loss_tracker = tf.keras.metrics.Mean(name="loss")
+        self.rec_tracker = tf.keras.metrics.Mean(name="reconstruction_loss")
+        self.kl_tracker = tf.keras.metrics.Mean(name="kl_loss")
+
+    @property
+    def metrics(self):
+        return [self.loss_tracker, self.rec_tracker, self.kl_tracker]
+
+    def call(self, inputs, training=False):
+        mean, log_var, z = self.encoder(inputs, training=training)
+        return self.decoder(z, training=training)
+
+    def train_step(self, data):
+        if isinstance(data, tuple):
+            data = data[0]
+
+        with tf.GradientTape() as tape:
+            mean, log_var, z = self.encoder(data, training=True)
+            reconstruction = self.decoder(z, training=True)
+
+            # Reconstruction loss
+            rec_loss = tf.reduce_mean(
+                tf.reduce_sum(
+                    tf.keras.backend.binary_crossentropy(
+                        data, reconstruction
+                    ), axis=1
+                )
+            )
+
+            # KL divergence loss
+            kl_loss = -0.5 * tf.reduce_mean(
+                tf.reduce_sum(
+                    1 + log_var - tf.square(mean)
+                    - tf.exp(log_var), axis=1
+                )
+            )
+
+            total_loss = rec_loss + kl_loss
+
+        gradients = tape.gradient(total_loss, self.trainable_variables)
+        self.optimizer.apply_gradients(
+            zip(gradients, self.trainable_variables)
+        )
+
+        self.loss_tracker.update_state(total_loss)
+        self.rec_tracker.update_state(rec_loss)
+        self.kl_tracker.update_state(kl_loss)
+
+        return {
+            "loss": self.loss_tracker.result(),
+            "reconstruction_loss": self.rec_tracker.result(),
+            "kl_loss": self.kl_tracker.result()
+        }
+
+
+# 7. Compile and train
+vae = VAE(encoder, decoder)
+vae.compile(optimizer="adam")
+
+history = vae.fit(
+    x_train,
+    epochs=5,
+    batch_size=256
+)
+
+# 8. Reconstruct test images
+mean, log_var, z_test = encoder.predict(x_test[:10], verbose=0)
+reconstructed = decoder.predict(z_test, verbose=0)
+
+# 9. Display original and reconstructed images
+plt.figure(figsize=(12, 5))
+
+for i in range(10):
+    plt.subplot(2, 10, i + 1)
+    plt.imshow(x_test[i].reshape(28, 28), cmap="gray")
+    plt.title("Original")
+    plt.axis("off")
+
+    plt.subplot(2, 10, i + 11)
+    plt.imshow(reconstructed[i].reshape(28, 28), cmap="gray")
+    plt.title("Reconstructed")
+    plt.axis("off")
+
+plt.tight_layout()
+plt.show()
+
+# 10. Plot training losses
+plt.figure(figsize=(8, 4))
+plt.plot(history.history["loss"], label="Total Loss")
+plt.plot(history.history["reconstruction_loss"],
+         label="Reconstruction Loss")
+plt.plot(history.history["kl_loss"], label="KL Loss")
+
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("VAE Training Loss")
+plt.legend()
+plt.show()
+
+# 11. VAE latent space visualization
+# Use the mean coordinates for all test images
+z_mean_test, _, _ = encoder.predict(x_test, batch_size=256, verbose=0)
+
+plt.figure(figsize=(10, 8))
+
+scatter = plt.scatter(
+    z_mean_test[:, 0],
+    z_mean_test[:, 1],
+    c=y_test,
+    cmap="rainbow",
+    s=5
+)
+
+plt.colorbar(scatter, ticks=range(10), label="Digit")
+plt.xlabel("Latent Dimension 1")
+plt.ylabel("Latent Dimension 2")
+plt.title("VAE Latent Space")
+plt.show()
+
+# 12. Calculate reconstruction MSE
+mse = np.mean((x_test[:10] - reconstructed) ** 2)
+
+print("Reconstruction MSE:", mse)
+print("Original shape:", x_test[:10].shape)
+print("Reconstructed shape:", reconstructed.shape)
+print("VAE training and reconstruction completed!")
